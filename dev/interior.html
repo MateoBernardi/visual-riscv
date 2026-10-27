@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>dev · vistas interiores</title>
+    <style>
+      #bar { position: fixed; z-index: 50; top: 8px; left: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; pointer-events: none; }
+      #bar > * { pointer-events: auto; font: 12px/1.2 system-ui; padding: 5px 9px; border-radius: 8px; border: 1px solid #bfae97; background: #fffaf0; }
+      #info { position: fixed; z-index: 50; bottom: 8px; left: 8px; font: 12px monospace; background: #fffaf0; padding: 4px 8px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="stage"><div class="scene-host" id="host"></div></div>
+    <div id="bar"></div><div id="info"></div>
+    <script type="module" src="./interior.js"></script>
+  </body>
+</html>

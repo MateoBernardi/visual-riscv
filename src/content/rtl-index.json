@@ -1,0 +1,1961 @@
+{
+  "commit": "b0f7cd4c8977635383a8df1723700d7c520b9c6c",
+  "prefix": "project_4/project_4.srcs/sources_1/new/",
+  "generatedFrom": "/home/mateo/facu/arquitectura-de-computadoras/project_4/project_4.srcs/sources_1/new",
+  "files": {
+    "common/reset_gen.v": { "lines": 33, "modules": [
+      { "name": "reset_gen", "start": 11, "end": 33,
+        "params": [
+          {"name":"POR_CYCLES","value":4,"line":12}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":14},
+          {"name":"i_btn_reset","dir":"input","width":1,"line":15},
+          {"name":"o_reset","dir":"output","width":1,"line":16}
+        ],
+        "instances": [
+          {"name":"u_btn_sync","module":"sync_2ff","line":24,"end":30}
+        ],
+        "regs": [
+          {"name":"por_reg","width":"POR_CYCLES","array":null,"line":18}
+        ],
+        "wires": [
+          {"name":"btn_reset","width":1,"line":19}
+        ],
+        "assigns": [
+          {"lhs":"o_reset","line":32}
+        ],
+        "always": [
+          {"line":21,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "common/sync_2ff.v": { "lines": 21, "modules": [
+      { "name": "sync_2ff", "start": 8, "end": 21,
+        "params": [
+          {"name":"INIT","value":0,"line":9}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":11},
+          {"name":"i_async","dir":"input","width":1,"line":12},
+          {"name":"o_sync","dir":"output","width":1,"line":13}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"sync_reg","width":2,"array":null,"line":15}
+        ],
+        "wires": [],
+        "assigns": [
+          {"lhs":"o_sync","line":20}
+        ],
+        "always": [
+          {"line":17,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "debug/debug_unit.v": { "lines": 229, "modules": [
+      { "name": "debug_unit", "start": 41, "end": 229,
+        "params": [
+          {"name":"IMEM_ADDR_W","value":8,"line":42}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":44},
+          {"name":"i_reset","dir":"input","width":1,"line":45},
+          {"name":"i_data_to_read","dir":"input","width":8,"line":47},
+          {"name":"i_fifo_rx_empty","dir":"input","width":1,"line":48},
+          {"name":"i_fifo_tx_full","dir":"input","width":1,"line":49},
+          {"name":"o_fifo_rx_read","dir":"output","width":1,"line":50},
+          {"name":"o_fifo_tx_write","dir":"output","width":1,"line":51},
+          {"name":"o_data_to_write","dir":"output","width":8,"line":52},
+          {"name":"o_cpu_enable","dir":"output","width":1,"line":54},
+          {"name":"o_cpu_reset","dir":"output","width":1,"line":55},
+          {"name":"i_cpu_halt","dir":"input","width":1,"line":56},
+          {"name":"o_imem_write_enable","dir":"output","width":1,"line":58},
+          {"name":"o_imem_write_addr","dir":"output","width":"IMEM_ADDR_W","line":59},
+          {"name":"o_imem_write_data","dir":"output","width":8,"line":60},
+          {"name":"o_dbg_addr","dir":"output","width":16,"line":62},
+          {"name":"i_dbg_data","dir":"input","width":32,"line":63},
+          {"name":"i_dbg_count","dir":"input","width":16,"line":64}
+        ],
+        "instances": [
+          {"name":"FSM","module":"debug_unit_fsm","line":93,"end":137},
+          {"name":"COMB","module":"debug_unit_comb","line":139,"end":188},
+          {"name":"REGS","module":"debug_unit_regs","line":190,"end":223}
+        ],
+        "regs": [],
+        "wires": [
+          {"name":"state","width":4,"line":67},
+          {"name":"state_next","width":4,"line":67},
+          {"name":"run","width":1,"line":68},
+          {"name":"run_next","width":1,"line":68},
+          {"name":"step","width":1,"line":69},
+          {"name":"step_next","width":1,"line":69},
+          {"name":"cpu_rst","width":1,"line":70},
+          {"name":"cpu_rst_next","width":1,"line":70},
+          {"name":"len","width":16,"line":71},
+          {"name":"len_next","width":16,"line":71},
+          {"name":"byte_cnt","width":18,"line":72},
+          {"name":"byte_cnt_next","width":18,"line":72},
+          {"name":"overflow","width":1,"line":73},
+          {"name":"overflow_next","width":1,"line":73},
+          {"name":"reply","width":8,"line":74},
+          {"name":"reply_next","width":8,"line":74},
+          {"name":"imem_we","width":1,"line":75},
+          {"name":"imem_we_next","width":1,"line":75},
+          {"name":"imem_addr","width":"IMEM_ADDR_W","line":76},
+          {"name":"imem_addr_next","width":"IMEM_ADDR_W","line":76},
+          {"name":"imem_data","width":8,"line":77},
+          {"name":"imem_data_next","width":8,"line":77},
+          {"name":"dbg_addr","width":16,"line":78},
+          {"name":"dbg_addr_next","width":16,"line":78},
+          {"name":"dbg_word","width":32,"line":79},
+          {"name":"dbg_word_next","width":32,"line":79},
+          {"name":"byte_idx","width":2,"line":80},
+          {"name":"byte_idx_next","width":2,"line":80},
+          {"name":"len_lo_load","width":1,"line":83},
+          {"name":"len_hi_load","width":1,"line":83},
+          {"name":"cnt_clear","width":1,"line":83},
+          {"name":"cnt_inc","width":1,"line":83},
+          {"name":"ovf_load","width":1,"line":83},
+          {"name":"imem_load","width":1,"line":84},
+          {"name":"imem_fill","width":1,"line":84},
+          {"name":"reply_load","width":1,"line":84},
+          {"name":"reply_code","width":8,"line":85},
+          {"name":"dbg_addr_clear","width":1,"line":86},
+          {"name":"dbg_addr_inc","width":1,"line":86},
+          {"name":"word_load","width":1,"line":86},
+          {"name":"word_shift","width":1,"line":86},
+          {"name":"byte_idx_clear","width":1,"line":87},
+          {"name":"byte_idx_inc","width":1,"line":87},
+          {"name":"send_count_lo","width":1,"line":88},
+          {"name":"send_count_hi","width":1,"line":88},
+          {"name":"send_word","width":1,"line":88},
+          {"name":"len_zero","width":1,"line":91},
+          {"name":"load_last","width":1,"line":91},
+          {"name":"in_range","width":1,"line":91},
+          {"name":"dbg_count_zero","width":1,"line":91},
+          {"name":"dbg_last","width":1,"line":91},
+          {"name":"byte_last","width":1,"line":91}
+        ],
+        "assigns": [
+          {"lhs":"o_imem_write_enable","line":225},
+          {"lhs":"o_imem_write_addr","line":226},
+          {"lhs":"o_imem_write_data","line":227},
+          {"lhs":"o_dbg_addr","line":228}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "debug/debug_unit_comb.v": { "lines": 95, "modules": [
+      { "name": "debug_unit_comb", "start": 9, "end": 95,
+        "params": [
+          {"name":"IMEM_ADDR_W","value":8,"line":10}
+        ],
+        "localparams": [
+          {"name":"CAP_BYTES","value":256,"line":64}
+        ],
+        "ports": [
+          {"name":"i_len","dir":"input","width":16,"line":13},
+          {"name":"i_byte_cnt","dir":"input","width":18,"line":14},
+          {"name":"i_overflow","dir":"input","width":1,"line":15},
+          {"name":"i_reply","dir":"input","width":8,"line":16},
+          {"name":"i_imem_addr","dir":"input","width":"IMEM_ADDR_W","line":17},
+          {"name":"i_imem_data","dir":"input","width":8,"line":18},
+          {"name":"i_dbg_addr","dir":"input","width":16,"line":19},
+          {"name":"i_dbg_word","dir":"input","width":32,"line":20},
+          {"name":"i_byte_idx","dir":"input","width":2,"line":21},
+          {"name":"i_rx_byte","dir":"input","width":8,"line":23},
+          {"name":"i_dbg_data","dir":"input","width":32,"line":24},
+          {"name":"i_dbg_count","dir":"input","width":16,"line":25},
+          {"name":"i_len_lo_load","dir":"input","width":1,"line":27},
+          {"name":"i_len_hi_load","dir":"input","width":1,"line":28},
+          {"name":"i_cnt_clear","dir":"input","width":1,"line":29},
+          {"name":"i_cnt_inc","dir":"input","width":1,"line":30},
+          {"name":"i_ovf_load","dir":"input","width":1,"line":31},
+          {"name":"i_imem_load","dir":"input","width":1,"line":32},
+          {"name":"i_imem_fill","dir":"input","width":1,"line":33},
+          {"name":"i_reply_load","dir":"input","width":1,"line":34},
+          {"name":"i_reply_code","dir":"input","width":8,"line":35},
+          {"name":"i_dbg_addr_clear","dir":"input","width":1,"line":36},
+          {"name":"i_dbg_addr_inc","dir":"input","width":1,"line":37},
+          {"name":"i_word_load","dir":"input","width":1,"line":38},
+          {"name":"i_word_shift","dir":"input","width":1,"line":39},
+          {"name":"i_byte_idx_clear","dir":"input","width":1,"line":40},
+          {"name":"i_byte_idx_inc","dir":"input","width":1,"line":41},
+          {"name":"i_send_count_lo","dir":"input","width":1,"line":42},
+          {"name":"i_send_count_hi","dir":"input","width":1,"line":43},
+          {"name":"i_send_word","dir":"input","width":1,"line":44},
+          {"name":"o_len_next","dir":"output","width":16,"line":46},
+          {"name":"o_byte_cnt_next","dir":"output","width":18,"line":47},
+          {"name":"o_overflow_next","dir":"output","width":1,"line":48},
+          {"name":"o_reply_next","dir":"output","width":8,"line":49},
+          {"name":"o_imem_addr_next","dir":"output","width":"IMEM_ADDR_W","line":50},
+          {"name":"o_imem_data_next","dir":"output","width":8,"line":51},
+          {"name":"o_dbg_addr_next","dir":"output","width":16,"line":52},
+          {"name":"o_dbg_word_next","dir":"output","width":32,"line":53},
+          {"name":"o_byte_idx_next","dir":"output","width":2,"line":54},
+          {"name":"o_tx_data","dir":"output","width":8,"line":55},
+          {"name":"o_len_zero","dir":"output","width":1,"line":57},
+          {"name":"o_load_last","dir":"output","width":1,"line":58},
+          {"name":"o_in_range","dir":"output","width":1,"line":59},
+          {"name":"o_dbg_count_zero","dir":"output","width":1,"line":60},
+          {"name":"o_dbg_last","dir":"output","width":1,"line":61},
+          {"name":"o_byte_last","dir":"output","width":1,"line":62}
+        ],
+        "instances": [],
+        "regs": [],
+        "wires": [
+          {"name":"n_bytes","width":18,"line":66},
+          {"name":"n_bytes_rx","width":18,"line":67},
+          {"name":"nop_byte","width":8,"line":68}
+        ],
+        "assigns": [
+          {"lhs":"o_len_next","line":70},
+          {"lhs":"o_byte_cnt_next","line":72},
+          {"lhs":"o_overflow_next","line":74},
+          {"lhs":"o_reply_next","line":75},
+          {"lhs":"o_imem_addr_next","line":76},
+          {"lhs":"o_imem_data_next","line":77},
+          {"lhs":"o_dbg_addr_next","line":79},
+          {"lhs":"o_dbg_word_next","line":81},
+          {"lhs":"o_byte_idx_next","line":83},
+          {"lhs":"o_tx_data","line":85},
+          {"lhs":"o_len_zero","line":89},
+          {"lhs":"o_load_last","line":90},
+          {"lhs":"o_in_range","line":91},
+          {"lhs":"o_dbg_count_zero","line":92},
+          {"lhs":"o_dbg_last","line":93},
+          {"lhs":"o_byte_last","line":94},
+          {"lhs":"n_bytes","line":66,"implicit":true},
+          {"lhs":"n_bytes_rx","line":67,"implicit":true},
+          {"lhs":"nop_byte","line":68,"implicit":true}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "debug/debug_unit_fsm.v": { "lines": 280, "modules": [
+      { "name": "debug_unit_fsm", "start": 10, "end": 280,
+        "params": [],
+        "localparams": [
+          {"name":"CMD_LOAD","value":76,"line":61},
+          {"name":"CMD_STEP","value":83,"line":62},
+          {"name":"CMD_RUN","value":82,"line":63},
+          {"name":"CMD_PAUSE","value":80,"line":64},
+          {"name":"CMD_RESET","value":88,"line":65},
+          {"name":"CMD_DUMP","value":68,"line":66},
+          {"name":"RSP_OK","value":75,"line":67},
+          {"name":"RSP_ERR","value":69,"line":68},
+          {"name":"RSP_HALT","value":72,"line":69},
+          {"name":"RSP_UNK","value":63,"line":70},
+          {"name":"IDLE","value":0,"line":72},
+          {"name":"LOAD_LEN_LO","value":1,"line":73},
+          {"name":"LOAD_LEN_HI","value":2,"line":74},
+          {"name":"LOAD_DATA","value":3,"line":75},
+          {"name":"LOAD_FILL","value":4,"line":76},
+          {"name":"REPLY","value":5,"line":77},
+          {"name":"DUMP_CNT_LO","value":6,"line":78},
+          {"name":"DUMP_CNT_HI","value":7,"line":79},
+          {"name":"DUMP_ADDR","value":8,"line":80},
+          {"name":"DUMP_LATCH","value":9,"line":81},
+          {"name":"DUMP_BYTE","value":10,"line":82}
+        ],
+        "ports": [
+          {"name":"i_reset","dir":"input","width":1,"line":11},
+          {"name":"i_state","dir":"input","width":4,"line":12},
+          {"name":"i_run","dir":"input","width":1,"line":13},
+          {"name":"i_step","dir":"input","width":1,"line":14},
+          {"name":"i_cpu_rst","dir":"input","width":1,"line":15},
+          {"name":"i_rx_empty","dir":"input","width":1,"line":17},
+          {"name":"i_tx_full","dir":"input","width":1,"line":18},
+          {"name":"i_rx_byte","dir":"input","width":8,"line":19},
+          {"name":"i_cpu_halt","dir":"input","width":1,"line":20},
+          {"name":"i_overflow","dir":"input","width":1,"line":22},
+          {"name":"i_len_zero","dir":"input","width":1,"line":23},
+          {"name":"i_load_last","dir":"input","width":1,"line":24},
+          {"name":"i_in_range","dir":"input","width":1,"line":25},
+          {"name":"i_dbg_count_zero","dir":"input","width":1,"line":26},
+          {"name":"i_dbg_last","dir":"input","width":1,"line":27},
+          {"name":"i_byte_last","dir":"input","width":1,"line":28},
+          {"name":"o_state_next","dir":"output","width":4,"line":30},
+          {"name":"o_run_next","dir":"output","width":1,"line":31},
+          {"name":"o_step_next","dir":"output","width":1,"line":32},
+          {"name":"o_cpu_rst_next","dir":"output","width":1,"line":33},
+          {"name":"o_rx_read","dir":"output","width":1,"line":35},
+          {"name":"o_tx_write","dir":"output","width":1,"line":36},
+          {"name":"o_len_lo_load","dir":"output","width":1,"line":38},
+          {"name":"o_len_hi_load","dir":"output","width":1,"line":39},
+          {"name":"o_cnt_clear","dir":"output","width":1,"line":40},
+          {"name":"o_cnt_inc","dir":"output","width":1,"line":41},
+          {"name":"o_ovf_load","dir":"output","width":1,"line":42},
+          {"name":"o_imem_we_next","dir":"output","width":1,"line":43},
+          {"name":"o_imem_load","dir":"output","width":1,"line":44},
+          {"name":"o_imem_fill","dir":"output","width":1,"line":45},
+          {"name":"o_reply_load","dir":"output","width":1,"line":46},
+          {"name":"o_reply_code","dir":"output","width":8,"line":47},
+          {"name":"o_dbg_addr_clear","dir":"output","width":1,"line":48},
+          {"name":"o_dbg_addr_inc","dir":"output","width":1,"line":49},
+          {"name":"o_word_load","dir":"output","width":1,"line":50},
+          {"name":"o_word_shift","dir":"output","width":1,"line":51},
+          {"name":"o_byte_idx_clear","dir":"output","width":1,"line":52},
+          {"name":"o_byte_idx_inc","dir":"output","width":1,"line":53},
+          {"name":"o_send_count_lo","dir":"output","width":1,"line":54},
+          {"name":"o_send_count_hi","dir":"output","width":1,"line":55},
+          {"name":"o_send_word","dir":"output","width":1,"line":56},
+          {"name":"o_cpu_enable","dir":"output","width":1,"line":58},
+          {"name":"o_cpu_reset","dir":"output","width":1,"line":59}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"o_state_next","width":4,"array":null,"line":30},
+          {"name":"o_run_next","width":1,"array":null,"line":31},
+          {"name":"o_step_next","width":1,"array":null,"line":32},
+          {"name":"o_cpu_rst_next","width":1,"array":null,"line":33},
+          {"name":"o_rx_read","width":1,"array":null,"line":35},
+          {"name":"o_tx_write","width":1,"array":null,"line":36},
+          {"name":"o_len_lo_load","width":1,"array":null,"line":38},
+          {"name":"o_len_hi_load","width":1,"array":null,"line":39},
+          {"name":"o_cnt_clear","width":1,"array":null,"line":40},
+          {"name":"o_cnt_inc","width":1,"array":null,"line":41},
+          {"name":"o_ovf_load","width":1,"array":null,"line":42},
+          {"name":"o_imem_we_next","width":1,"array":null,"line":43},
+          {"name":"o_imem_load","width":1,"array":null,"line":44},
+          {"name":"o_imem_fill","width":1,"array":null,"line":45},
+          {"name":"o_reply_load","width":1,"array":null,"line":46},
+          {"name":"o_reply_code","width":8,"array":null,"line":47},
+          {"name":"o_dbg_addr_clear","width":1,"array":null,"line":48},
+          {"name":"o_dbg_addr_inc","width":1,"array":null,"line":49},
+          {"name":"o_word_load","width":1,"array":null,"line":50},
+          {"name":"o_word_shift","width":1,"array":null,"line":51},
+          {"name":"o_byte_idx_clear","width":1,"array":null,"line":52},
+          {"name":"o_byte_idx_inc","width":1,"array":null,"line":53},
+          {"name":"o_send_count_lo","width":1,"array":null,"line":54},
+          {"name":"o_send_count_hi","width":1,"array":null,"line":55},
+          {"name":"o_send_word","width":1,"array":null,"line":56}
+        ],
+        "wires": [
+          {"name":"loading","width":1,"line":84},
+          {"name":"dumping","width":1,"line":86}
+        ],
+        "assigns": [
+          {"lhs":"o_cpu_enable","line":278},
+          {"lhs":"o_cpu_reset","line":279},
+          {"lhs":"loading","line":84,"implicit":true},
+          {"lhs":"dumping","line":86,"implicit":true}
+        ],
+        "always": [
+          {"line":90,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"IDLE","line":118},
+          {"label":"CMD_LOAD","line":128},
+          {"label":"CMD_STEP","line":132},
+          {"label":"CMD_RUN","line":143},
+          {"label":"CMD_PAUSE","line":153},
+          {"label":"CMD_RESET","line":159},
+          {"label":"CMD_DUMP","line":166},
+          {"label":"LOAD_LEN_LO","line":179},
+          {"label":"LOAD_LEN_HI","line":187},
+          {"label":"LOAD_DATA","line":197},
+          {"label":"LOAD_FILL","line":208},
+          {"label":"REPLY","line":222},
+          {"label":"DUMP_CNT_LO","line":229},
+          {"label":"DUMP_CNT_HI","line":237},
+          {"label":"DUMP_ADDR","line":245},
+          {"label":"DUMP_LATCH","line":249},
+          {"label":"DUMP_BYTE","line":255}
+        ]
+      }
+    ]},
+    "debug/debug_unit_regs.v": { "lines": 77, "modules": [
+      { "name": "debug_unit_regs", "start": 9, "end": 77,
+        "params": [
+          {"name":"IMEM_ADDR_W","value":8,"line":10}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":12},
+          {"name":"i_reset","dir":"input","width":1,"line":13},
+          {"name":"i_state_next","dir":"input","width":4,"line":14},
+          {"name":"i_run_next","dir":"input","width":1,"line":15},
+          {"name":"i_step_next","dir":"input","width":1,"line":16},
+          {"name":"i_cpu_rst_next","dir":"input","width":1,"line":17},
+          {"name":"i_len_next","dir":"input","width":16,"line":18},
+          {"name":"i_byte_cnt_next","dir":"input","width":18,"line":19},
+          {"name":"i_overflow_next","dir":"input","width":1,"line":20},
+          {"name":"i_reply_next","dir":"input","width":8,"line":21},
+          {"name":"i_imem_we_next","dir":"input","width":1,"line":22},
+          {"name":"i_imem_addr_next","dir":"input","width":"IMEM_ADDR_W","line":23},
+          {"name":"i_imem_data_next","dir":"input","width":8,"line":24},
+          {"name":"i_dbg_addr_next","dir":"input","width":16,"line":25},
+          {"name":"i_dbg_word_next","dir":"input","width":32,"line":26},
+          {"name":"i_byte_idx_next","dir":"input","width":2,"line":27},
+          {"name":"o_state","dir":"output","width":4,"line":28},
+          {"name":"o_run","dir":"output","width":1,"line":29},
+          {"name":"o_step","dir":"output","width":1,"line":30},
+          {"name":"o_cpu_rst","dir":"output","width":1,"line":31},
+          {"name":"o_len","dir":"output","width":16,"line":32},
+          {"name":"o_byte_cnt","dir":"output","width":18,"line":33},
+          {"name":"o_overflow","dir":"output","width":1,"line":34},
+          {"name":"o_reply","dir":"output","width":8,"line":35},
+          {"name":"o_imem_we","dir":"output","width":1,"line":36},
+          {"name":"o_imem_addr","dir":"output","width":"IMEM_ADDR_W","line":37},
+          {"name":"o_imem_data","dir":"output","width":8,"line":38},
+          {"name":"o_dbg_addr","dir":"output","width":16,"line":39},
+          {"name":"o_dbg_word","dir":"output","width":32,"line":40},
+          {"name":"o_byte_idx","dir":"output","width":2,"line":41}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"o_state","width":4,"array":null,"line":28},
+          {"name":"o_run","width":1,"array":null,"line":29},
+          {"name":"o_step","width":1,"array":null,"line":30},
+          {"name":"o_cpu_rst","width":1,"array":null,"line":31},
+          {"name":"o_len","width":16,"array":null,"line":32},
+          {"name":"o_byte_cnt","width":18,"array":null,"line":33},
+          {"name":"o_overflow","width":1,"array":null,"line":34},
+          {"name":"o_reply","width":8,"array":null,"line":35},
+          {"name":"o_imem_we","width":1,"array":null,"line":36},
+          {"name":"o_imem_addr","width":"IMEM_ADDR_W","array":null,"line":37},
+          {"name":"o_imem_data","width":8,"array":null,"line":38},
+          {"name":"o_dbg_addr","width":16,"array":null,"line":39},
+          {"name":"o_dbg_word","width":32,"array":null,"line":40},
+          {"name":"o_byte_idx","width":2,"array":null,"line":41}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":43,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "if_stage.v": { "lines": 35, "modules": [
+      { "name": "if_stage", "start": 25, "end": 35,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":26},
+          {"name":"rst","dir":"input","width":1,"line":27},
+          {"name":"pc_next","dir":"input","width":32,"line":28},
+          {"name":"pc","dir":"output","width":32,"line":29},
+          {"name":"instr","dir":"output","width":32,"line":30}
+        ],
+        "instances": [
+          {"name":"pc_reg","module":"pc","line":32,"end":32},
+          {"name":"imem_mod","module":"imem","line":33,"end":34}
+        ],
+        "regs": [],
+        "wires": [],
+        "assigns": [],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "pc.v": { "lines": 35, "modules": [
+      { "name": "pc", "start": 24, "end": 35,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":25},
+          {"name":"rst","dir":"input","width":1,"line":26},
+          {"name":"en","dir":"input","width":1,"line":27},
+          {"name":"pc_next","dir":"input","width":32,"line":28},
+          {"name":"pc","dir":"output","width":32,"line":29}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"pc","width":32,"array":null,"line":29}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":31,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "pipeline/1_fetch/imem.v": { "lines": 52, "modules": [
+      { "name": "imem", "start": 12, "end": 52,
+        "params": [
+          {"name":"ADDR_W","value":10,"line":13},
+          {"name":"INIT_FILE","value":"","line":14}
+        ],
+        "localparams": [
+          {"name":"DEPTH","value":256,"line":25},
+          {"name":"NOP","value":19,"line":26}
+        ],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":16},
+          {"name":"addr","dir":"input","width":32,"line":18},
+          {"name":"instr","dir":"output","width":32,"line":19},
+          {"name":"wr_en","dir":"input","width":1,"line":21},
+          {"name":"wr_addr","dir":"input","width":"ADDR_W","line":22},
+          {"name":"wr_data","dir":"input","width":8,"line":23}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"mem","width":32,"array":"0:DEPTH-1","line":28}
+        ],
+        "wires": [
+          {"name":"wr_word","width":"ADDR_W-3:0","line":38}
+        ],
+        "assigns": [
+          {"lhs":"instr","line":51},
+          {"lhs":"wr_word","line":38,"implicit":true}
+        ],
+        "always": [
+          {"line":40,"kind":"ff"}
+        ],
+        "cases": [
+          {"label":"2'd0","line":43},
+          {"label":"2'd1","line":44},
+          {"label":"2'd2","line":45},
+          {"label":"2'd3","line":46}
+        ]
+      }
+    ]},
+    "pipeline/2_decode/control.v": { "lines": 73, "modules": [
+      { "name": "control", "start": 2, "end": 73,
+        "params": [],
+        "localparams": [
+          {"name":"R","value":51,"line":19},
+          {"name":"I","value":19,"line":20},
+          {"name":"LOAD","value":3,"line":21},
+          {"name":"STOR","value":35,"line":22},
+          {"name":"BR","value":99,"line":23},
+          {"name":"JAL","value":111,"line":24},
+          {"name":"JALR","value":103,"line":25},
+          {"name":"LUI","value":55,"line":26},
+          {"name":"AUIP","value":23,"line":27},
+          {"name":"SYS","value":115,"line":28}
+        ],
+        "ports": [
+          {"name":"opcode","dir":"input","width":7,"line":3},
+          {"name":"funct3","dir":"input","width":3,"line":4},
+          {"name":"funct7","dir":"input","width":7,"line":5},
+          {"name":"reg_write","dir":"output","width":1,"line":6},
+          {"name":"alu_src","dir":"output","width":1,"line":7},
+          {"name":"mem_read","dir":"output","width":1,"line":8},
+          {"name":"mem_write","dir":"output","width":1,"line":9},
+          {"name":"branch","dir":"output","width":1,"line":10},
+          {"name":"jump","dir":"output","width":1,"line":11},
+          {"name":"halt","dir":"output","width":1,"line":12},
+          {"name":"wb_sel","dir":"output","width":2,"line":13},
+          {"name":"alu_op","dir":"output","width":4,"line":14},
+          {"name":"imm_sel","dir":"output","width":3,"line":15}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"reg_write","width":1,"array":null,"line":6},
+          {"name":"alu_src","width":1,"array":null,"line":7},
+          {"name":"mem_read","width":1,"array":null,"line":8},
+          {"name":"mem_write","width":1,"array":null,"line":9},
+          {"name":"branch","width":1,"array":null,"line":10},
+          {"name":"jump","width":1,"array":null,"line":11},
+          {"name":"halt","width":1,"array":null,"line":12},
+          {"name":"wb_sel","width":2,"array":null,"line":13},
+          {"name":"alu_op","width":4,"array":null,"line":14},
+          {"name":"imm_sel","width":3,"array":null,"line":15}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":30,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"R","line":35},
+          {"label":"4'b0000","line":37},
+          {"label":"4'b1000","line":38},
+          {"label":"4'b0111","line":39},
+          {"label":"4'b0110","line":40},
+          {"label":"4'b0100","line":41},
+          {"label":"4'b0010","line":42},
+          {"label":"4'b0011","line":43},
+          {"label":"4'b0001","line":44},
+          {"label":"4'b0101","line":45},
+          {"label":"4'b1101","line":46},
+          {"label":"I","line":49},
+          {"label":"3'h0","line":51},
+          {"label":"3'h7","line":52},
+          {"label":"3'h6","line":53},
+          {"label":"3'h4","line":54},
+          {"label":"3'h2","line":55},
+          {"label":"3'h3","line":56},
+          {"label":"3'h1","line":57},
+          {"label":"3'h5","line":58},
+          {"label":"LOAD","line":61},
+          {"label":"STOR","line":62},
+          {"label":"BR","line":63},
+          {"label":"JAL","line":65},
+          {"label":"JALR","line":66},
+          {"label":"LUI","line":67},
+          {"label":"AUIP","line":68},
+          {"label":"SYS","line":69}
+        ]
+      }
+    ]},
+    "pipeline/2_decode/immgen.v": { "lines": 41, "modules": [
+      { "name": "immgen", "start": 24, "end": 41,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"instr","dir":"input","width":32,"line":25},
+          {"name":"imm_sel","dir":"input","width":3,"line":26},
+          {"name":"imm","dir":"output","width":32,"line":27}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"imm","width":32,"array":null,"line":27}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":29,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"3'b000","line":31},
+          {"label":"3'b001","line":32},
+          {"label":"3'b010","line":33},
+          {"label":"3'b011","line":35},
+          {"label":"3'b100","line":36}
+        ]
+      }
+    ]},
+    "pipeline/2_decode/regfile.v": { "lines": 36, "modules": [
+      { "name": "regfile", "start": 3, "end": 36,
+        "params": [
+          {"name":"BYPASS","value":0,"line":4}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":7},
+          {"name":"rst","dir":"input","width":1,"line":8},
+          {"name":"we","dir":"input","width":1,"line":9},
+          {"name":"waddr","dir":"input","width":5,"line":10},
+          {"name":"wdata","dir":"input","width":32,"line":11},
+          {"name":"raddr1","dir":"input","width":5,"line":12},
+          {"name":"rdata1","dir":"output","width":32,"line":13},
+          {"name":"raddr2","dir":"input","width":5,"line":14},
+          {"name":"rdata2","dir":"output","width":32,"line":15},
+          {"name":"dbg_addr","dir":"input","width":5,"line":16},
+          {"name":"dbg_data","dir":"output","width":32,"line":17}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"regs","width":32,"array":32,"line":19}
+        ],
+        "wires": [
+          {"name":"wr","width":1,"line":32}
+        ],
+        "assigns": [
+          {"lhs":"rdata1","line":33},
+          {"lhs":"rdata2","line":34},
+          {"lhs":"dbg_data","line":35},
+          {"lhs":"wr","line":32,"implicit":true}
+        ],
+        "always": [
+          {"line":24,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "pipeline/3_execute/alu.v": { "lines": 100, "modules": [
+      { "name": "alu_tp1", "start": 35, "end": 100,
+        "params": [
+          {"name":"NB_DATA","value":32,"line":37},
+          {"name":"NB_OP","value":4,"line":38}
+        ],
+        "localparams": [
+          {"name":"NB_SH","value":5,"line":54}
+        ],
+        "ports": [
+          {"name":"i_data_a","dir":"input","width":"NB_DATA","line":41},
+          {"name":"i_data_b","dir":"input","width":"NB_DATA","line":42},
+          {"name":"i_data_op","dir":"input","width":"NB_OP","line":43},
+          {"name":"o_data","dir":"output","width":"NB_DATA","line":44},
+          {"name":"o_z","dir":"output","width":1,"line":45},
+          {"name":"o_o","dir":"output","width":1,"line":46},
+          {"name":"o_lt","dir":"output","width":1,"line":47},
+          {"name":"o_ltu","dir":"output","width":1,"line":48}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"o_z","width":1,"array":null,"line":45},
+          {"name":"o_o","width":1,"array":null,"line":46},
+          {"name":"alu_result","width":"NB_DATA","array":null,"line":56}
+        ],
+        "wires": [
+          {"name":"shamt","width":"NB_SH","line":60}
+        ],
+        "assigns": [
+          {"lhs":"o_lt","line":63},
+          {"lhs":"o_ltu","line":64},
+          {"lhs":"o_data","line":98},
+          {"lhs":"shamt","line":60,"implicit":true}
+        ],
+        "always": [
+          {"line":66,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"OP_ADD","line":71},
+          {"label":"OP_SUB","line":77},
+          {"label":"OP_AND","line":82},
+          {"label":"OP_OR","line":83},
+          {"label":"OP_XOR","line":84},
+          {"label":"OP_SRA","line":85},
+          {"label":"OP_SRL","line":86},
+          {"label":"OP_NOR","line":87},
+          {"label":"OP_SLL","line":88},
+          {"label":"OP_SLT","line":89},
+          {"label":"OP_SLTU","line":90}
+        ]
+      }
+    ]},
+    "pipeline/3_execute/alu_ops.vh": { "lines": 12, "modules": [
+    ]},
+    "pipeline/3_execute/branch_unit.v": { "lines": 46, "modules": [
+      { "name": "branch_unit", "start": 23, "end": 46,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"funct3","dir":"input","width":3,"line":24},
+          {"name":"zero","dir":"input","width":1,"line":25},
+          {"name":"alu_lt","dir":"input","width":1,"line":26},
+          {"name":"alu_ltu","dir":"input","width":1,"line":27},
+          {"name":"pc","dir":"input","width":32,"line":28},
+          {"name":"b_imm","dir":"input","width":32,"line":29},
+          {"name":"branch_taken","dir":"output","width":1,"line":30},
+          {"name":"branch_target","dir":"output","width":32,"line":31}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"branch_taken","width":1,"array":null,"line":30}
+        ],
+        "wires": [],
+        "assigns": [
+          {"lhs":"branch_target","line":33}
+        ],
+        "always": [
+          {"line":35,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"3'b000","line":37},
+          {"label":"3'b001","line":38},
+          {"label":"3'b100","line":39},
+          {"label":"3'b101","line":40},
+          {"label":"3'b110","line":41},
+          {"label":"3'b111","line":42}
+        ]
+      }
+    ]},
+    "pipeline/4_memory/dmem.v": { "lines": 98, "modules": [
+      { "name": "dmem", "start": 30, "end": 98,
+        "params": [
+          {"name":"DEPTH","value":256,"line":30}
+        ],
+        "localparams": [
+          {"name":"AW","value":8,"line":40}
+        ],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":31},
+          {"name":"we","dir":"input","width":1,"line":32},
+          {"name":"addr","dir":"input","width":32,"line":33},
+          {"name":"wdata","dir":"input","width":32,"line":34},
+          {"name":"funct3","dir":"input","width":3,"line":35},
+          {"name":"rdata","dir":"output","width":32,"line":36},
+          {"name":"dbg_addr","dir":"input","width":8,"line":37},
+          {"name":"dbg_data","dir":"output","width":32,"line":38}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"rdata","width":32,"array":null,"line":36},
+          {"name":"lane0","width":8,"array":"0:DEPTH-1","line":42},
+          {"name":"lane1","width":8,"array":"0:DEPTH-1","line":43},
+          {"name":"lane2","width":8,"array":"0:DEPTH-1","line":44},
+          {"name":"lane3","width":8,"array":"0:DEPTH-1","line":45},
+          {"name":"be","width":4,"array":null,"line":56}
+        ],
+        "wires": [
+          {"name":"widx","width":"AW","line":52},
+          {"name":"boff","width":2,"line":53},
+          {"name":"sw","width":1,"line":65},
+          {"name":"sb","width":1,"line":66},
+          {"name":"d0","width":8,"line":67},
+          {"name":"d1","width":8,"line":68},
+          {"name":"d2","width":8,"line":69},
+          {"name":"d3","width":8,"line":70},
+          {"name":"word","width":32,"line":82},
+          {"name":"b","width":8,"line":83},
+          {"name":"h","width":16,"line":84}
+        ],
+        "assigns": [
+          {"lhs":"dbg_data","line":97},
+          {"lhs":"widx","line":52,"implicit":true},
+          {"lhs":"boff","line":53,"implicit":true},
+          {"lhs":"sw","line":65,"implicit":true},
+          {"lhs":"sb","line":66,"implicit":true},
+          {"lhs":"d0","line":67,"implicit":true},
+          {"lhs":"d1","line":68,"implicit":true},
+          {"lhs":"d2","line":69,"implicit":true},
+          {"lhs":"d3","line":70,"implicit":true},
+          {"lhs":"word","line":82,"implicit":true},
+          {"lhs":"b","line":83,"implicit":true},
+          {"lhs":"h","line":84,"implicit":true}
+        ],
+        "always": [
+          {"line":57,"kind":"comb"},
+          {"line":72,"kind":"ff"},
+          {"line":86,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"2'b00","line":59},
+          {"label":"2'b01","line":60},
+          {"label":"3'b000","line":88},
+          {"label":"3'b001","line":89},
+          {"label":"3'b010","line":90},
+          {"label":"3'b100","line":91},
+          {"label":"3'b101","line":92}
+        ]
+      }
+    ]},
+    "pipeline/flow/flush_unit.v": { "lines": 12, "modules": [
+      { "name": "flush_unit", "start": 5, "end": 12,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"redirect","dir":"input","width":1,"line":6},
+          {"name":"flush_if_id","dir":"output","width":1,"line":7},
+          {"name":"flush_id_ex","dir":"output","width":1,"line":8}
+        ],
+        "instances": [],
+        "regs": [],
+        "wires": [],
+        "assigns": [
+          {"lhs":"flush_if_id","line":10},
+          {"lhs":"flush_id_ex","line":11}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "pipeline/flow/forward_unit.v": { "lines": 57, "modules": [
+      { "name": "forward_unit", "start": 27, "end": 57,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"ex_rs1","dir":"input","width":5,"line":28},
+          {"name":"ex_rs2","dir":"input","width":5,"line":29},
+          {"name":"mem_rd","dir":"input","width":5,"line":30},
+          {"name":"mem_reg_write","dir":"input","width":1,"line":31},
+          {"name":"wb_rd","dir":"input","width":5,"line":32},
+          {"name":"wb_reg_write","dir":"input","width":1,"line":33},
+          {"name":"forward_a","dir":"output","width":2,"line":34},
+          {"name":"forward_b","dir":"output","width":2,"line":35}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"forward_a","width":2,"array":null,"line":34},
+          {"name":"forward_b","width":2,"array":null,"line":35}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":37,"kind":"comb"}
+        ],
+        "cases": []
+      }
+    ]},
+    "pipeline/flow/hazard_unit.v": { "lines": 39, "modules": [
+      { "name": "hazard_unit", "start": 25, "end": 39,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"ex_mem_read","dir":"input","width":1,"line":26},
+          {"name":"ex_rd","dir":"input","width":5,"line":27},
+          {"name":"id_rs1","dir":"input","width":5,"line":28},
+          {"name":"id_rs2","dir":"input","width":5,"line":29},
+          {"name":"stall","dir":"output","width":1,"line":30}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"stall","width":1,"array":null,"line":30}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":32,"kind":"comb"}
+        ],
+        "cases": []
+      }
+    ]},
+    "pipeline/regs/pipe_reg.v": { "lines": 133, "modules": [
+      { "name": "if_id_reg", "start": 10, "end": 31,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":11},
+          {"name":"rst","dir":"input","width":1,"line":11},
+          {"name":"en","dir":"input","width":1,"line":11},
+          {"name":"stall","dir":"input","width":1,"line":12},
+          {"name":"flush","dir":"input","width":1,"line":13},
+          {"name":"if_pc","dir":"input","width":32,"line":14},
+          {"name":"if_inst","dir":"input","width":32,"line":14},
+          {"name":"id_pc","dir":"output","width":32,"line":15},
+          {"name":"id_inst","dir":"output","width":32,"line":15}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"id_pc","width":32,"array":null,"line":15},
+          {"name":"id_inst","width":32,"array":null,"line":15}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":17,"kind":"ff"}
+        ],
+        "cases": []
+      },
+      { "name": "id_ex_reg", "start": 33, "end": 75,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":34},
+          {"name":"rst","dir":"input","width":1,"line":34},
+          {"name":"en","dir":"input","width":1,"line":34},
+          {"name":"flush","dir":"input","width":1,"line":34},
+          {"name":"id_reg_write","dir":"input","width":1,"line":36},
+          {"name":"id_alu_src","dir":"input","width":1,"line":36},
+          {"name":"id_mem_read","dir":"input","width":1,"line":36},
+          {"name":"id_mem_write","dir":"input","width":1,"line":36},
+          {"name":"id_branch","dir":"input","width":1,"line":37},
+          {"name":"id_jump","dir":"input","width":1,"line":37},
+          {"name":"id_is_jalr","dir":"input","width":1,"line":37},
+          {"name":"id_is_auipc","dir":"input","width":1,"line":37},
+          {"name":"id_halt","dir":"input","width":1,"line":37},
+          {"name":"id_wb_sel","dir":"input","width":2,"line":38},
+          {"name":"id_alu_op","dir":"input","width":4,"line":39},
+          {"name":"id_pc","dir":"input","width":32,"line":41},
+          {"name":"id_pc4","dir":"input","width":32,"line":41},
+          {"name":"id_rdata1","dir":"input","width":32,"line":41},
+          {"name":"id_rdata2","dir":"input","width":32,"line":41},
+          {"name":"id_imm","dir":"input","width":32,"line":41},
+          {"name":"id_rs1","dir":"input","width":5,"line":42},
+          {"name":"id_rs2","dir":"input","width":5,"line":42},
+          {"name":"id_rd","dir":"input","width":5,"line":42},
+          {"name":"id_funct3","dir":"input","width":3,"line":43},
+          {"name":"ex_reg_write","dir":"output","width":1,"line":45},
+          {"name":"ex_alu_src","dir":"output","width":1,"line":45},
+          {"name":"ex_mem_read","dir":"output","width":1,"line":45},
+          {"name":"ex_mem_write","dir":"output","width":1,"line":45},
+          {"name":"ex_branch","dir":"output","width":1,"line":46},
+          {"name":"ex_jump","dir":"output","width":1,"line":46},
+          {"name":"ex_is_jalr","dir":"output","width":1,"line":46},
+          {"name":"ex_is_auipc","dir":"output","width":1,"line":46},
+          {"name":"ex_halt","dir":"output","width":1,"line":46},
+          {"name":"ex_wb_sel","dir":"output","width":2,"line":47},
+          {"name":"ex_alu_op","dir":"output","width":4,"line":48},
+          {"name":"ex_pc","dir":"output","width":32,"line":49},
+          {"name":"ex_pc4","dir":"output","width":32,"line":49},
+          {"name":"ex_rdata1","dir":"output","width":32,"line":49},
+          {"name":"ex_rdata2","dir":"output","width":32,"line":49},
+          {"name":"ex_imm","dir":"output","width":32,"line":49},
+          {"name":"ex_rs1","dir":"output","width":5,"line":50},
+          {"name":"ex_rs2","dir":"output","width":5,"line":50},
+          {"name":"ex_rd","dir":"output","width":5,"line":50},
+          {"name":"ex_funct3","dir":"output","width":3,"line":51}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"ex_reg_write","width":1,"array":null,"line":45},
+          {"name":"ex_alu_src","width":1,"array":null,"line":45},
+          {"name":"ex_mem_read","width":1,"array":null,"line":45},
+          {"name":"ex_mem_write","width":1,"array":null,"line":45},
+          {"name":"ex_branch","width":1,"array":null,"line":46},
+          {"name":"ex_jump","width":1,"array":null,"line":46},
+          {"name":"ex_is_jalr","width":1,"array":null,"line":46},
+          {"name":"ex_is_auipc","width":1,"array":null,"line":46},
+          {"name":"ex_halt","width":1,"array":null,"line":46},
+          {"name":"ex_wb_sel","width":2,"array":null,"line":47},
+          {"name":"ex_alu_op","width":4,"array":null,"line":48},
+          {"name":"ex_pc","width":32,"array":null,"line":49},
+          {"name":"ex_pc4","width":32,"array":null,"line":49},
+          {"name":"ex_rdata1","width":32,"array":null,"line":49},
+          {"name":"ex_rdata2","width":32,"array":null,"line":49},
+          {"name":"ex_imm","width":32,"array":null,"line":49},
+          {"name":"ex_rs1","width":5,"array":null,"line":50},
+          {"name":"ex_rs2","width":5,"array":null,"line":50},
+          {"name":"ex_rd","width":5,"array":null,"line":50},
+          {"name":"ex_funct3","width":3,"array":null,"line":51}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":53,"kind":"ff"}
+        ],
+        "cases": []
+      },
+      { "name": "ex_mem_reg", "start": 77, "end": 111,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":78},
+          {"name":"rst","dir":"input","width":1,"line":78},
+          {"name":"en","dir":"input","width":1,"line":78},
+          {"name":"ex_reg_write","dir":"input","width":1,"line":79},
+          {"name":"ex_mem_read","dir":"input","width":1,"line":79},
+          {"name":"ex_mem_write","dir":"input","width":1,"line":79},
+          {"name":"ex_halt","dir":"input","width":1,"line":79},
+          {"name":"ex_wb_sel","dir":"input","width":2,"line":80},
+          {"name":"ex_alu_out","dir":"input","width":32,"line":81},
+          {"name":"ex_rdata2","dir":"input","width":32,"line":81},
+          {"name":"ex_pc4","dir":"input","width":32,"line":81},
+          {"name":"ex_imm","dir":"input","width":32,"line":81},
+          {"name":"ex_rd","dir":"input","width":5,"line":82},
+          {"name":"ex_funct3","dir":"input","width":3,"line":83},
+          {"name":"mem_reg_write","dir":"output","width":1,"line":84},
+          {"name":"mem_mem_read","dir":"output","width":1,"line":84},
+          {"name":"mem_mem_write","dir":"output","width":1,"line":84},
+          {"name":"mem_halt","dir":"output","width":1,"line":84},
+          {"name":"mem_wb_sel","dir":"output","width":2,"line":85},
+          {"name":"mem_alu_out","dir":"output","width":32,"line":86},
+          {"name":"mem_rdata2","dir":"output","width":32,"line":86},
+          {"name":"mem_pc4","dir":"output","width":32,"line":86},
+          {"name":"mem_imm","dir":"output","width":32,"line":86},
+          {"name":"mem_rd","dir":"output","width":5,"line":87},
+          {"name":"mem_funct3","dir":"output","width":3,"line":88}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"mem_reg_write","width":1,"array":null,"line":84},
+          {"name":"mem_mem_read","width":1,"array":null,"line":84},
+          {"name":"mem_mem_write","width":1,"array":null,"line":84},
+          {"name":"mem_halt","width":1,"array":null,"line":84},
+          {"name":"mem_wb_sel","width":2,"array":null,"line":85},
+          {"name":"mem_alu_out","width":32,"array":null,"line":86},
+          {"name":"mem_rdata2","width":32,"array":null,"line":86},
+          {"name":"mem_pc4","width":32,"array":null,"line":86},
+          {"name":"mem_imm","width":32,"array":null,"line":86},
+          {"name":"mem_rd","width":5,"array":null,"line":87},
+          {"name":"mem_funct3","width":3,"array":null,"line":88}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":90,"kind":"ff"}
+        ],
+        "cases": []
+      },
+      { "name": "mem_wb_reg", "start": 113, "end": 133,
+        "params": [],
+        "localparams": [],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":114},
+          {"name":"rst","dir":"input","width":1,"line":114},
+          {"name":"en","dir":"input","width":1,"line":114},
+          {"name":"mem_reg_write","dir":"input","width":1,"line":115},
+          {"name":"mem_halt","dir":"input","width":1,"line":115},
+          {"name":"mem_result","dir":"input","width":32,"line":116},
+          {"name":"mem_rd","dir":"input","width":5,"line":117},
+          {"name":"wb_reg_write","dir":"output","width":1,"line":118},
+          {"name":"wb_halt","dir":"output","width":1,"line":118},
+          {"name":"wb_result","dir":"output","width":32,"line":119},
+          {"name":"wb_rd","dir":"output","width":5,"line":120}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"wb_reg_write","width":1,"array":null,"line":118},
+          {"name":"wb_halt","width":1,"array":null,"line":118},
+          {"name":"wb_result","width":32,"array":null,"line":119},
+          {"name":"wb_rd","width":5,"array":null,"line":120}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":122,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "pipeline/riscv_pipeline.v": { "lines": 323, "modules": [
+      { "name": "riscv_pipeline", "start": 34, "end": 323,
+        "params": [
+          {"name":"IMEM_ADDR_W","value":10,"line":35},
+          {"name":"IMEM_INIT","value":"","line":36}
+        ],
+        "localparams": [
+          {"name":"DBG_REGS","value":22,"line":51},
+          {"name":"DBG_DMEM","value":54,"line":52},
+          {"name":"DBG_DMEM_WORDS","value":32,"line":53},
+          {"name":"DBG_COUNT","value":86,"line":54}
+        ],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":38},
+          {"name":"i_rst","dir":"input","width":1,"line":39},
+          {"name":"i_enable","dir":"input","width":1,"line":40},
+          {"name":"o_halt","dir":"output","width":1,"line":41},
+          {"name":"i_imem_we","dir":"input","width":1,"line":43},
+          {"name":"i_imem_waddr","dir":"input","width":"IMEM_ADDR_W","line":44},
+          {"name":"i_imem_wdata","dir":"input","width":8,"line":45},
+          {"name":"i_dbg_addr","dir":"input","width":16,"line":47},
+          {"name":"o_dbg_data","dir":"output","width":32,"line":48},
+          {"name":"o_dbg_count","dir":"output","width":16,"line":49}
+        ],
+        "instances": [
+          {"name":"u_imem","module":"imem","line":81,"end":84},
+          {"name":"u_if_id","module":"if_id_reg","line":87,"end":91},
+          {"name":"u_ctrl","module":"control","line":105,"end":111},
+          {"name":"u_immgen","module":"immgen","line":116,"end":116},
+          {"name":"u_rf","module":"regfile","line":121,"end":127},
+          {"name":"u_id_ex","module":"id_ex_reg","line":139,"end":157},
+          {"name":"u_hazard","module":"hazard_unit","line":159,"end":162},
+          {"name":"u_fwd","module":"forward_unit","line":169,"end":174},
+          {"name":"u_alu","module":"alu_tp1","line":194,"end":198},
+          {"name":"u_bu","module":"branch_unit","line":202,"end":206},
+          {"name":"u_flush","module":"flush_unit","line":214,"end":217},
+          {"name":"u_ex_mem","module":"ex_mem_reg","line":232,"end":242},
+          {"name":"u_dmem","module":"dmem","line":246,"end":251},
+          {"name":"u_mem_wb","module":"mem_wb_reg","line":265,"end":271}
+        ],
+        "regs": [
+          {"name":"o_dbg_data","width":32,"array":null,"line":48},
+          {"name":"pc","width":32,"array":null,"line":71},
+          {"name":"fwd_a_val","width":32,"array":null,"line":176},
+          {"name":"fwd_b_val","width":32,"array":null,"line":176},
+          {"name":"halting_r","width":1,"array":null,"line":220},
+          {"name":"mem_result_r","width":32,"array":null,"line":254}
+        ],
+        "wires": [
+          {"name":"en","width":1,"line":56},
+          {"name":"dbg_reg_off","width":16,"line":57},
+          {"name":"dbg_dmem_off","width":16,"line":58},
+          {"name":"dbg_reg_idx","width":5,"line":59},
+          {"name":"dbg_dmem_idx","width":8,"line":60},
+          {"name":"rst","width":1,"line":61},
+          {"name":"stall","width":1,"line":64},
+          {"name":"redirect","width":1,"line":64},
+          {"name":"halting","width":1,"line":64},
+          {"name":"ex_halt","width":1,"line":64},
+          {"name":"stop_fetch","width":1,"line":65},
+          {"name":"flush_if_id_r","width":1,"line":66},
+          {"name":"flush_id_ex_r","width":1,"line":66},
+          {"name":"flush_if_id","width":1,"line":67},
+          {"name":"flush_id_ex","width":1,"line":68},
+          {"name":"pc_next","width":32,"line":72},
+          {"name":"if_inst","width":32,"line":73},
+          {"name":"pc_en","width":1,"line":74},
+          {"name":"id_pc","width":32,"line":86},
+          {"name":"id_inst","width":32,"line":86},
+          {"name":"id_opcode","width":7,"line":94},
+          {"name":"id_rd","width":5,"line":95},
+          {"name":"id_funct3","width":3,"line":96},
+          {"name":"id_rs1","width":5,"line":97},
+          {"name":"id_rs2","width":5,"line":98},
+          {"name":"id_funct7","width":7,"line":99},
+          {"name":"id_reg_write","width":1,"line":101},
+          {"name":"id_alu_src","width":1,"line":101},
+          {"name":"id_mem_read","width":1,"line":101},
+          {"name":"id_mem_write","width":1,"line":101},
+          {"name":"id_branch","width":1,"line":101},
+          {"name":"id_jump","width":1,"line":101},
+          {"name":"id_halt","width":1,"line":101},
+          {"name":"id_wb_sel","width":2,"line":102},
+          {"name":"id_alu_op","width":4,"line":103},
+          {"name":"id_imm_sel","width":3,"line":104},
+          {"name":"id_is_jalr","width":1,"line":112},
+          {"name":"id_is_auipc","width":1,"line":113},
+          {"name":"id_imm","width":32,"line":115},
+          {"name":"id_rdata1","width":32,"line":118},
+          {"name":"id_rdata2","width":32,"line":118},
+          {"name":"wb_result","width":32,"line":118},
+          {"name":"dbg_reg_data","width":32,"line":118},
+          {"name":"wb_rd","width":5,"line":119},
+          {"name":"wb_reg_write","width":1,"line":120},
+          {"name":"wb_halt","width":1,"line":120},
+          {"name":"id_pc4","width":32,"line":129},
+          {"name":"ex_reg_write","width":1,"line":132},
+          {"name":"ex_alu_src","width":1,"line":132},
+          {"name":"ex_mem_read","width":1,"line":132},
+          {"name":"ex_mem_write","width":1,"line":132},
+          {"name":"ex_branch","width":1,"line":133},
+          {"name":"ex_jump","width":1,"line":133},
+          {"name":"ex_is_jalr","width":1,"line":133},
+          {"name":"ex_is_auipc","width":1,"line":133},
+          {"name":"ex_wb_sel","width":2,"line":134},
+          {"name":"ex_alu_op","width":4,"line":135},
+          {"name":"ex_pc","width":32,"line":136},
+          {"name":"ex_pc4","width":32,"line":136},
+          {"name":"ex_rdata1","width":32,"line":136},
+          {"name":"ex_rdata2","width":32,"line":136},
+          {"name":"ex_imm","width":32,"line":136},
+          {"name":"ex_rs1","width":5,"line":137},
+          {"name":"ex_rs2","width":5,"line":137},
+          {"name":"ex_rd","width":5,"line":137},
+          {"name":"ex_funct3","width":3,"line":138},
+          {"name":"forward_a","width":2,"line":165},
+          {"name":"forward_b","width":2,"line":165},
+          {"name":"mem_reg_write","width":1,"line":166},
+          {"name":"mem_rd","width":5,"line":167},
+          {"name":"mem_result","width":32,"line":168},
+          {"name":"alu_a","width":32,"line":190},
+          {"name":"alu_b","width":32,"line":191},
+          {"name":"alu_out","width":32,"line":192},
+          {"name":"alu_zero","width":1,"line":193},
+          {"name":"alu_ovf","width":1,"line":193},
+          {"name":"alu_lt","width":1,"line":193},
+          {"name":"alu_ltu","width":1,"line":193},
+          {"name":"bu_taken","width":1,"line":200},
+          {"name":"bu_target","width":32,"line":201},
+          {"name":"branch_taken","width":1,"line":208},
+          {"name":"redirect_target","width":32,"line":211},
+          {"name":"mem_mem_read","width":1,"line":228},
+          {"name":"mem_mem_write","width":1,"line":228},
+          {"name":"mem_halt","width":1,"line":228},
+          {"name":"mem_wb_sel","width":2,"line":229},
+          {"name":"mem_alu_out","width":32,"line":230},
+          {"name":"mem_rdata2","width":32,"line":230},
+          {"name":"mem_pc4","width":32,"line":230},
+          {"name":"mem_imm","width":32,"line":230},
+          {"name":"mem_funct3","width":3,"line":231},
+          {"name":"mem_rdata","width":32,"line":245},
+          {"name":"dbg_dmem_data","width":32,"line":245},
+          {"name":"dbg_idex_ctrl","width":32,"line":276},
+          {"name":"dbg_idex_field","width":32,"line":279},
+          {"name":"dbg_ex_flags","width":32,"line":280},
+          {"name":"dbg_exmem_ctrl","width":32,"line":282},
+          {"name":"dbg_exmem_fld","width":32,"line":284},
+          {"name":"dbg_memwb_ctrl","width":32,"line":285}
+        ],
+        "assigns": [
+          {"lhs":"redirect","line":209},
+          {"lhs":"pc_next","line":212},
+          {"lhs":"halting","line":225},
+          {"lhs":"mem_result","line":263},
+          {"lhs":"o_halt","line":273},
+          {"lhs":"o_dbg_count","line":322},
+          {"lhs":"en","line":56,"implicit":true},
+          {"lhs":"dbg_reg_off","line":57,"implicit":true},
+          {"lhs":"dbg_dmem_off","line":58,"implicit":true},
+          {"lhs":"dbg_reg_idx","line":59,"implicit":true},
+          {"lhs":"dbg_dmem_idx","line":60,"implicit":true},
+          {"lhs":"rst","line":61,"implicit":true},
+          {"lhs":"stop_fetch","line":65,"implicit":true},
+          {"lhs":"flush_if_id","line":67,"implicit":true},
+          {"lhs":"flush_id_ex","line":68,"implicit":true},
+          {"lhs":"pc_en","line":74,"implicit":true},
+          {"lhs":"id_opcode","line":94,"implicit":true},
+          {"lhs":"id_rd","line":95,"implicit":true},
+          {"lhs":"id_funct3","line":96,"implicit":true},
+          {"lhs":"id_rs1","line":97,"implicit":true},
+          {"lhs":"id_rs2","line":98,"implicit":true},
+          {"lhs":"id_funct7","line":99,"implicit":true},
+          {"lhs":"id_is_jalr","line":112,"implicit":true},
+          {"lhs":"id_is_auipc","line":113,"implicit":true},
+          {"lhs":"id_pc4","line":129,"implicit":true},
+          {"lhs":"alu_a","line":190,"implicit":true},
+          {"lhs":"alu_b","line":191,"implicit":true},
+          {"lhs":"branch_taken","line":208,"implicit":true},
+          {"lhs":"redirect_target","line":211,"implicit":true},
+          {"lhs":"dbg_idex_ctrl","line":276,"implicit":true},
+          {"lhs":"dbg_idex_field","line":279,"implicit":true},
+          {"lhs":"dbg_ex_flags","line":280,"implicit":true},
+          {"lhs":"dbg_exmem_ctrl","line":282,"implicit":true},
+          {"lhs":"dbg_exmem_fld","line":284,"implicit":true},
+          {"lhs":"dbg_memwb_ctrl","line":285,"implicit":true}
+        ],
+        "always": [
+          {"line":76,"kind":"ff"},
+          {"line":177,"kind":"comb"},
+          {"line":221,"kind":"ff"},
+          {"line":255,"kind":"comb"},
+          {"line":287,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"2'b10","line":179},
+          {"label":"2'b01","line":180},
+          {"label":"2'b10","line":184},
+          {"label":"2'b01","line":185},
+          {"label":"2'b00","line":257},
+          {"label":"2'b01","line":258},
+          {"label":"2'b10","line":259},
+          {"label":"16'd0","line":289},
+          {"label":"16'd1","line":290},
+          {"label":"16'd2","line":291},
+          {"label":"16'd3","line":292},
+          {"label":"16'd4","line":293},
+          {"label":"16'd5","line":294},
+          {"label":"16'd6","line":295},
+          {"label":"16'd7","line":296},
+          {"label":"16'd8","line":297},
+          {"label":"16'd9","line":298},
+          {"label":"16'd10","line":299},
+          {"label":"16'd11","line":300},
+          {"label":"16'd12","line":301},
+          {"label":"16'd13","line":302},
+          {"label":"16'd14","line":303},
+          {"label":"16'd15","line":304},
+          {"label":"16'd16","line":305},
+          {"label":"16'd17","line":306},
+          {"label":"16'd18","line":307},
+          {"label":"16'd19","line":308},
+          {"label":"16'd20","line":309},
+          {"label":"16'd21","line":310}
+        ]
+      }
+    ]},
+    "riscv_core.v": { "lines": 132, "modules": [
+      { "name": "riscv_core", "start": 26, "end": 132,
+        "params": [],
+        "localparams": [
+          {"name":"OPC_JALR","value":103,"line":60},
+          {"name":"OPC_AUIPC","value":23,"line":61}
+        ],
+        "ports": [
+          {"name":"clk","dir":"input","width":1,"line":27},
+          {"name":"rst","dir":"input","width":1,"line":28}
+        ],
+        "instances": [
+          {"name":"imem0","module":"imem","line":36,"end":37},
+          {"name":"ctrl","module":"control","line":52,"end":58},
+          {"name":"rf","module":"regfile","line":68,"end":73},
+          {"name":"ig","module":"immgen","line":77,"end":77},
+          {"name":"alu0","module":"alu_tp1","line":84,"end":88},
+          {"name":"dmem0","module":"dmem","line":92,"end":97},
+          {"name":"bu","module":"branch_unit","line":102,"end":108}
+        ],
+        "regs": [
+          {"name":"pc","width":32,"array":null,"line":31},
+          {"name":"wr_data","width":32,"array":null,"line":67}
+        ],
+        "wires": [
+          {"name":"pc4","width":32,"line":32},
+          {"name":"inst","width":32,"line":35},
+          {"name":"opcode","width":7,"line":40},
+          {"name":"rd","width":5,"line":41},
+          {"name":"funct3","width":3,"line":42},
+          {"name":"rs1","width":5,"line":43},
+          {"name":"rs2","width":5,"line":44},
+          {"name":"funct7","width":7,"line":45},
+          {"name":"reg_write","width":1,"line":48},
+          {"name":"alu_src","width":1,"line":48},
+          {"name":"mem_read","width":1,"line":48},
+          {"name":"mem_write","width":1,"line":48},
+          {"name":"branch","width":1,"line":48},
+          {"name":"jump","width":1,"line":48},
+          {"name":"wb_sel","width":2,"line":49},
+          {"name":"alu_op","width":4,"line":50},
+          {"name":"imm_sel","width":3,"line":51},
+          {"name":"is_jalr","width":1,"line":62},
+          {"name":"is_auipc","width":1,"line":63},
+          {"name":"rdata1","width":32,"line":66},
+          {"name":"rdata2","width":32,"line":66},
+          {"name":"imm","width":32,"line":76},
+          {"name":"alu_a","width":32,"line":80},
+          {"name":"alu_b","width":32,"line":81},
+          {"name":"alu_out","width":32,"line":82},
+          {"name":"alu_zero","width":1,"line":83},
+          {"name":"alu_ovf","width":1,"line":83},
+          {"name":"alu_lt","width":1,"line":83},
+          {"name":"alu_ltu","width":1,"line":83},
+          {"name":"dmem_rdata","width":32,"line":91},
+          {"name":"branch_taken","width":1,"line":100},
+          {"name":"branch_target","width":32,"line":101},
+          {"name":"jal_target","width":32,"line":111},
+          {"name":"jalr_target","width":32,"line":112},
+          {"name":"pc_next","width":32,"line":114}
+        ],
+        "assigns": [
+          {"lhs":"pc4","line":32,"implicit":true},
+          {"lhs":"opcode","line":40,"implicit":true},
+          {"lhs":"rd","line":41,"implicit":true},
+          {"lhs":"funct3","line":42,"implicit":true},
+          {"lhs":"rs1","line":43,"implicit":true},
+          {"lhs":"rs2","line":44,"implicit":true},
+          {"lhs":"funct7","line":45,"implicit":true},
+          {"lhs":"is_jalr","line":62,"implicit":true},
+          {"lhs":"is_auipc","line":63,"implicit":true},
+          {"lhs":"alu_a","line":80,"implicit":true},
+          {"lhs":"alu_b","line":81,"implicit":true},
+          {"lhs":"jal_target","line":111,"implicit":true},
+          {"lhs":"jalr_target","line":112,"implicit":true},
+          {"lhs":"pc_next","line":114,"implicit":true}
+        ],
+        "always": [
+          {"line":119,"kind":"ff"},
+          {"line":123,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"2'b00","line":125},
+          {"label":"2'b01","line":126},
+          {"label":"2'b10","line":127}
+        ]
+      }
+    ]},
+    "top/top_riscv.v": { "lines": 142, "modules": [
+      { "name": "top_riscv", "start": 15, "end": 142,
+        "params": [
+          {"name":"CLK_FREQ","value":"100_000_000","line":16},
+          {"name":"USE_MMCM","value":1,"line":17},
+          {"name":"BAUD_RATE","value":"19_200","line":18},
+          {"name":"N_TICKS","value":16,"line":19},
+          {"name":"PTR_LEN","value":2,"line":20},
+          {"name":"IMEM_ADDR_W","value":10,"line":21}
+        ],
+        "localparams": [
+          {"name":"SYS_FREQ","value":"USE_MMCM ? CLK_FREQ / 2 : CLK_FREQ","line":29}
+        ],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":23},
+          {"name":"i_reset","dir":"input","width":1,"line":24},
+          {"name":"i_rx","dir":"input","width":1,"line":25},
+          {"name":"o_tx","dir":"output","width":1,"line":26},
+          {"name":"o_led","dir":"output","width":3,"line":27}
+        ],
+        "instances": [
+          {"name":"u_mmcm","module":"MMCME2_BASE","line":37,"end":47},
+          {"name":"u_fb","module":"BUFG","line":48,"end":48},
+          {"name":"u_out","module":"BUFG","line":49,"end":49},
+          {"name":"u_reset","module":"reset_gen","line":70,"end":74},
+          {"name":"u_rx_sync","module":"sync_2ff","line":76,"end":82},
+          {"name":"u_uart","module":"uart_core","line":84,"end":102},
+          {"name":"u_debug","module":"debug_unit","line":104,"end":124},
+          {"name":"u_cpu","module":"riscv_pipeline","line":126,"end":139}
+        ],
+        "regs": [],
+        "wires": [
+          {"name":"clk","width":1,"line":31},
+          {"name":"locked","width":1,"line":31},
+          {"name":"sys_reset","width":1,"line":32},
+          {"name":"rx_sync","width":1,"line":32},
+          {"name":"clk_fb","width":1,"line":36},
+          {"name":"clk_fb_buf","width":1,"line":36},
+          {"name":"clk_out","width":1,"line":36},
+          {"name":"clk_out_buf","width":1,"line":36},
+          {"name":"rx_read","width":1,"line":59},
+          {"name":"tx_write","width":1,"line":59},
+          {"name":"rx_empty","width":1,"line":59},
+          {"name":"tx_full","width":1,"line":59},
+          {"name":"rx_data","width":8,"line":60},
+          {"name":"tx_data","width":8,"line":60},
+          {"name":"cpu_enable","width":1,"line":63},
+          {"name":"cpu_reset","width":1,"line":63},
+          {"name":"cpu_halt","width":1,"line":63},
+          {"name":"imem_we","width":1,"line":64},
+          {"name":"imem_waddr","width":"IMEM_ADDR_W","line":65},
+          {"name":"imem_wdata","width":8,"line":66},
+          {"name":"dbg_addr","width":16,"line":67},
+          {"name":"dbg_count","width":16,"line":67},
+          {"name":"dbg_data","width":32,"line":68}
+        ],
+        "assigns": [
+          {"lhs":"clk","line":50},
+          {"lhs":"clk","line":53},
+          {"lhs":"locked","line":54},
+          {"lhs":"o_led","line":141}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "uart/baud_rate_gen.v": { "lines": 61, "modules": [
+      { "name": "baud_rate_gen", "start": 27, "end": 61,
+        "params": [
+          {"name":"CLK_FREQ","value":"100_000_000","line":29},
+          {"name":"BAUD_RATE","value":"19_200","line":30},
+          {"name":"N_TICKS","value":16,"line":31}
+        ],
+        "localparams": [
+          {"name":"MODULUS","value":"CLK_FREQ / (BAUD_RATE * N_TICKS)","line":41},
+          {"name":"NB_COUNTER","value":"$clog2(MODULUS)","line":42}
+        ],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":34},
+          {"name":"i_reset","dir":"input","width":1,"line":35},
+          {"name":"o_tick","dir":"output","width":1,"line":36}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"counter_reg","width":"NB_COUNTER","array":null,"line":44}
+        ],
+        "wires": [],
+        "assigns": [
+          {"lhs":"o_tick","line":59}
+        ],
+        "always": [
+          {"line":46,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "uart/fifo.v": { "lines": 117, "modules": [
+      { "name": "fifo", "start": 24, "end": 117,
+        "params": [
+          {"name":"NB_DATA","value":8,"line":26},
+          {"name":"PTR_LEN","value":4,"line":27}
+        ],
+        "localparams": [
+          {"name":"READ","value":1,"line":40},
+          {"name":"WRITE","value":2,"line":41},
+          {"name":"READWRITE","value":3,"line":42}
+        ],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":30},
+          {"name":"i_reset","dir":"input","width":1,"line":31},
+          {"name":"i_read_fifo","dir":"input","width":1,"line":32},
+          {"name":"i_write_fifo","dir":"input","width":1,"line":33},
+          {"name":"i_data_to_write","dir":"input","width":"NB_DATA","line":34},
+          {"name":"o_fifo_is_empty","dir":"output","width":1,"line":35},
+          {"name":"o_fifo_is_full","dir":"output","width":1,"line":36},
+          {"name":"o_data_to_read","dir":"output","width":"NB_DATA","line":37}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"array","width":"NB_DATA","array":"(2**PTR_LEN)-1:0","line":44},
+          {"name":"write_ptr","width":"PTR_LEN","array":null,"line":45},
+          {"name":"write_ptr_next","width":"PTR_LEN","array":null,"line":45},
+          {"name":"write_ptr_ok","width":"PTR_LEN","array":null,"line":45},
+          {"name":"read_ptr","width":"PTR_LEN","array":null,"line":46},
+          {"name":"read_ptr_next","width":"PTR_LEN","array":null,"line":46},
+          {"name":"read_ptr_ok","width":"PTR_LEN","array":null,"line":46},
+          {"name":"full","width":1,"array":null,"line":48},
+          {"name":"full_next","width":1,"array":null,"line":48},
+          {"name":"empty","width":1,"array":null,"line":49},
+          {"name":"empty_next","width":1,"array":null,"line":49}
+        ],
+        "wires": [
+          {"name":"write_enable","width":1,"line":51}
+        ],
+        "assigns": [
+          {"lhs":"o_data_to_read","line":59},
+          {"lhs":"write_enable","line":60},
+          {"lhs":"o_fifo_is_full","line":114},
+          {"lhs":"o_fifo_is_empty","line":115}
+        ],
+        "always": [
+          {"line":53,"kind":"ff"},
+          {"line":62,"kind":"ff"},
+          {"line":77,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"READ","line":87},
+          {"label":"WRITE","line":96},
+          {"label":"READWRITE","line":105}
+        ]
+      }
+    ]},
+    "uart/uart_core.v": { "lines": 126, "modules": [
+      { "name": "uart_core", "start": 30, "end": 126,
+        "params": [
+          {"name":"CLK_FREQ","value":"100_000_000","line":32},
+          {"name":"BAUD_RATE","value":"19_200","line":33},
+          {"name":"NB_DATA","value":8,"line":34},
+          {"name":"N_TICKS","value":16,"line":35},
+          {"name":"PTR_LEN","value":2,"line":36}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":39},
+          {"name":"i_reset","dir":"input","width":1,"line":40},
+          {"name":"i_rx","dir":"input","width":1,"line":43},
+          {"name":"o_tx","dir":"output","width":1,"line":44},
+          {"name":"i_read_uart","dir":"input","width":1,"line":47},
+          {"name":"i_write_uart","dir":"input","width":1,"line":48},
+          {"name":"i_data_to_write","dir":"input","width":"NB_DATA","line":49},
+          {"name":"o_tx_full","dir":"output","width":1,"line":50},
+          {"name":"o_rx_empty","dir":"output","width":1,"line":51},
+          {"name":"o_rx_full","dir":"output","width":1,"line":52},
+          {"name":"o_data_to_read","dir":"output","width":"NB_DATA","line":53}
+        ],
+        "instances": [
+          {"name":"BAUD_GEN","module":"baud_rate_gen","line":61,"end":69},
+          {"name":"RX","module":"uart_rx","line":71,"end":81},
+          {"name":"RX_FIFO","module":"fifo","line":83,"end":95},
+          {"name":"TX_FIFO","module":"fifo","line":97,"end":109},
+          {"name":"TX","module":"uart_tx","line":113,"end":124}
+        ],
+        "regs": [],
+        "wires": [
+          {"name":"tick","width":1,"line":56},
+          {"name":"rx_done","width":1,"line":57},
+          {"name":"tx_done","width":1,"line":57},
+          {"name":"tx_empty","width":1,"line":58},
+          {"name":"tx_not_empty","width":1,"line":58},
+          {"name":"rx_data_out","width":"NB_DATA","line":59},
+          {"name":"tx_fifo_out","width":"NB_DATA","line":59}
+        ],
+        "assigns": [
+          {"lhs":"tx_not_empty","line":111}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "uart/uart_rx.v": { "lines": 109, "modules": [
+      { "name": "uart_rx", "start": 30, "end": 109,
+        "params": [
+          {"name":"NB_DATA","value":8,"line":32},
+          {"name":"N_TICKS","value":16,"line":33}
+        ],
+        "localparams": [
+          {"name":"NB_TICKCNT","value":4,"line":44},
+          {"name":"NB_BITCNT","value":3,"line":45}
+        ],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":36},
+          {"name":"i_reset","dir":"input","width":1,"line":37},
+          {"name":"i_rx","dir":"input","width":1,"line":38},
+          {"name":"i_tick","dir":"input","width":1,"line":39},
+          {"name":"o_rx_done","dir":"output","width":1,"line":40},
+          {"name":"o_dout","dir":"output","width":"NB_DATA","line":41}
+        ],
+        "instances": [
+          {"name":"FSM","module":"uart_rx_fsm","line":54,"end":68},
+          {"name":"COMB","module":"uart_rx_comb","line":70,"end":89},
+          {"name":"REGS","module":"uart_rx_regs","line":91,"end":105}
+        ],
+        "regs": [],
+        "wires": [
+          {"name":"state","width":2,"line":47},
+          {"name":"state_next","width":2,"line":47},
+          {"name":"s","width":"NB_TICKCNT","line":48},
+          {"name":"s_next","width":"NB_TICKCNT","line":48},
+          {"name":"n","width":"NB_BITCNT","line":49},
+          {"name":"n_next","width":"NB_BITCNT","line":49},
+          {"name":"received_byte","width":"NB_DATA","line":50},
+          {"name":"received_byte_next","width":"NB_DATA","line":50},
+          {"name":"s_clear","width":1,"line":51},
+          {"name":"s_inc","width":1,"line":51},
+          {"name":"n_clear","width":1,"line":51},
+          {"name":"n_inc","width":1,"line":51},
+          {"name":"shift","width":1,"line":51},
+          {"name":"s_half","width":1,"line":52},
+          {"name":"s_last","width":1,"line":52},
+          {"name":"n_last","width":1,"line":52}
+        ],
+        "assigns": [
+          {"lhs":"o_dout","line":107}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "uart/uart_rx_comb.v": { "lines": 63, "modules": [
+      { "name": "uart_rx_comb", "start": 26, "end": 63,
+        "params": [
+          {"name":"NB_DATA","value":8,"line":28},
+          {"name":"N_TICKS","value":16,"line":29}
+        ],
+        "localparams": [
+          {"name":"NB_TICKCNT","value":4,"line":49},
+          {"name":"NB_BITCNT","value":3,"line":50},
+          {"name":"HALF_TICK","value":7,"line":51}
+        ],
+        "ports": [
+          {"name":"i_rx","dir":"input","width":1,"line":32},
+          {"name":"i_s","dir":"input","width":"$clog2(N_TICKS)","line":33},
+          {"name":"i_n","dir":"input","width":"$clog2(NB_DATA)","line":34},
+          {"name":"i_byte","dir":"input","width":"NB_DATA","line":35},
+          {"name":"i_s_clear","dir":"input","width":1,"line":36},
+          {"name":"i_s_inc","dir":"input","width":1,"line":37},
+          {"name":"i_n_clear","dir":"input","width":1,"line":38},
+          {"name":"i_n_inc","dir":"input","width":1,"line":39},
+          {"name":"i_shift","dir":"input","width":1,"line":40},
+          {"name":"o_s_next","dir":"output","width":"$clog2(N_TICKS)","line":41},
+          {"name":"o_n_next","dir":"output","width":"$clog2(NB_DATA)","line":42},
+          {"name":"o_byte_next","dir":"output","width":"NB_DATA","line":43},
+          {"name":"o_s_half","dir":"output","width":1,"line":44},
+          {"name":"o_s_last","dir":"output","width":1,"line":45},
+          {"name":"o_n_last","dir":"output","width":1,"line":46}
+        ],
+        "instances": [],
+        "regs": [],
+        "wires": [],
+        "assigns": [
+          {"lhs":"o_s_next","line":53},
+          {"lhs":"o_n_next","line":55},
+          {"lhs":"o_byte_next","line":57},
+          {"lhs":"o_s_half","line":59},
+          {"lhs":"o_s_last","line":60},
+          {"lhs":"o_n_last","line":61}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "uart/uart_rx_fsm.v": { "lines": 107, "modules": [
+      { "name": "uart_rx_fsm", "start": 27, "end": 107,
+        "params": [],
+        "localparams": [
+          {"name":"IDLE","value":0,"line":44},
+          {"name":"START","value":1,"line":44},
+          {"name":"DATA","value":2,"line":44},
+          {"name":"STOP","value":3,"line":44}
+        ],
+        "ports": [
+          {"name":"i_state","dir":"input","width":2,"line":29},
+          {"name":"i_rx","dir":"input","width":1,"line":30},
+          {"name":"i_tick","dir":"input","width":1,"line":31},
+          {"name":"i_s_half","dir":"input","width":1,"line":32},
+          {"name":"i_s_last","dir":"input","width":1,"line":33},
+          {"name":"i_n_last","dir":"input","width":1,"line":34},
+          {"name":"o_state_next","dir":"output","width":2,"line":35},
+          {"name":"o_s_clear","dir":"output","width":1,"line":36},
+          {"name":"o_s_inc","dir":"output","width":1,"line":37},
+          {"name":"o_n_clear","dir":"output","width":1,"line":38},
+          {"name":"o_n_inc","dir":"output","width":1,"line":39},
+          {"name":"o_shift","dir":"output","width":1,"line":40},
+          {"name":"o_rx_done","dir":"output","width":1,"line":41}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"o_state_next","width":2,"array":null,"line":35},
+          {"name":"o_s_clear","width":1,"array":null,"line":36},
+          {"name":"o_s_inc","width":1,"array":null,"line":37},
+          {"name":"o_n_clear","width":1,"array":null,"line":38},
+          {"name":"o_n_inc","width":1,"array":null,"line":39},
+          {"name":"o_shift","width":1,"array":null,"line":40},
+          {"name":"o_rx_done","width":1,"array":null,"line":41}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":46,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"IDLE","line":56},
+          {"label":"START","line":62},
+          {"label":"DATA","line":74},
+          {"label":"STOP","line":91}
+        ]
+      }
+    ]},
+    "uart/uart_rx_regs.v": { "lines": 58, "modules": [
+      { "name": "uart_rx_regs", "start": 25, "end": 58,
+        "params": [
+          {"name":"NB_DATA","value":8,"line":27},
+          {"name":"N_TICKS","value":16,"line":28}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":31},
+          {"name":"i_reset","dir":"input","width":1,"line":32},
+          {"name":"i_state_next","dir":"input","width":2,"line":33},
+          {"name":"i_s_next","dir":"input","width":"$clog2(N_TICKS)","line":34},
+          {"name":"i_n_next","dir":"input","width":"$clog2(NB_DATA)","line":35},
+          {"name":"i_byte_next","dir":"input","width":"NB_DATA","line":36},
+          {"name":"o_state","dir":"output","width":2,"line":37},
+          {"name":"o_s","dir":"output","width":"$clog2(N_TICKS)","line":38},
+          {"name":"o_n","dir":"output","width":"$clog2(NB_DATA)","line":39},
+          {"name":"o_byte","dir":"output","width":"NB_DATA","line":40}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"o_state","width":2,"array":null,"line":37},
+          {"name":"o_s","width":"$clog2(N_TICKS)","array":null,"line":38},
+          {"name":"o_n","width":"$clog2(NB_DATA)","array":null,"line":39},
+          {"name":"o_byte","width":"NB_DATA","array":null,"line":40}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":43,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]},
+    "uart/uart_tx.v": { "lines": 119, "modules": [
+      { "name": "uart_tx", "start": 30, "end": 119,
+        "params": [
+          {"name":"NB_DATA","value":8,"line":32},
+          {"name":"N_TICKS","value":16,"line":33}
+        ],
+        "localparams": [
+          {"name":"NB_TICKCNT","value":4,"line":45},
+          {"name":"NB_BITCNT","value":3,"line":46}
+        ],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":36},
+          {"name":"i_reset","dir":"input","width":1,"line":37},
+          {"name":"i_tx_ready","dir":"input","width":1,"line":38},
+          {"name":"i_tick","dir":"input","width":1,"line":39},
+          {"name":"i_din","dir":"input","width":"NB_DATA","line":40},
+          {"name":"o_tx_done","dir":"output","width":1,"line":41},
+          {"name":"o_tx","dir":"output","width":1,"line":42}
+        ],
+        "instances": [
+          {"name":"FSM","module":"uart_tx_fsm","line":57,"end":73},
+          {"name":"COMB","module":"uart_tx_comb","line":75,"end":97},
+          {"name":"REGS","module":"uart_tx_regs","line":99,"end":115}
+        ],
+        "regs": [],
+        "wires": [
+          {"name":"state","width":2,"line":48},
+          {"name":"state_next","width":2,"line":48},
+          {"name":"s","width":"NB_TICKCNT","line":49},
+          {"name":"s_next","width":"NB_TICKCNT","line":49},
+          {"name":"n","width":"NB_BITCNT","line":50},
+          {"name":"n_next","width":"NB_BITCNT","line":50},
+          {"name":"send_byte","width":"NB_DATA","line":51},
+          {"name":"send_byte_next","width":"NB_DATA","line":51},
+          {"name":"tx","width":1,"line":52},
+          {"name":"tx_next","width":1,"line":52},
+          {"name":"s_clear","width":1,"line":53},
+          {"name":"s_inc","width":1,"line":53},
+          {"name":"n_clear","width":1,"line":53},
+          {"name":"n_inc","width":1,"line":53},
+          {"name":"load","width":1,"line":53},
+          {"name":"shift","width":1,"line":53},
+          {"name":"tx_data","width":1,"line":54},
+          {"name":"tx_level","width":1,"line":54},
+          {"name":"s_last","width":1,"line":55},
+          {"name":"n_last","width":1,"line":55}
+        ],
+        "assigns": [
+          {"lhs":"o_tx","line":117}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "uart/uart_tx_comb.v": { "lines": 66, "modules": [
+      { "name": "uart_tx_comb", "start": 26, "end": 66,
+        "params": [
+          {"name":"NB_DATA","value":8,"line":28},
+          {"name":"N_TICKS","value":16,"line":29}
+        ],
+        "localparams": [
+          {"name":"NB_TICKCNT","value":4,"line":52},
+          {"name":"NB_BITCNT","value":3,"line":53}
+        ],
+        "ports": [
+          {"name":"i_din","dir":"input","width":"NB_DATA","line":32},
+          {"name":"i_s","dir":"input","width":"$clog2(N_TICKS)","line":33},
+          {"name":"i_n","dir":"input","width":"$clog2(NB_DATA)","line":34},
+          {"name":"i_byte","dir":"input","width":"NB_DATA","line":35},
+          {"name":"i_s_clear","dir":"input","width":1,"line":36},
+          {"name":"i_s_inc","dir":"input","width":1,"line":37},
+          {"name":"i_n_clear","dir":"input","width":1,"line":38},
+          {"name":"i_n_inc","dir":"input","width":1,"line":39},
+          {"name":"i_load","dir":"input","width":1,"line":40},
+          {"name":"i_shift","dir":"input","width":1,"line":41},
+          {"name":"i_tx_data","dir":"input","width":1,"line":42},
+          {"name":"i_tx_level","dir":"input","width":1,"line":43},
+          {"name":"o_s_next","dir":"output","width":"$clog2(N_TICKS)","line":44},
+          {"name":"o_n_next","dir":"output","width":"$clog2(NB_DATA)","line":45},
+          {"name":"o_byte_next","dir":"output","width":"NB_DATA","line":46},
+          {"name":"o_tx_next","dir":"output","width":1,"line":47},
+          {"name":"o_s_last","dir":"output","width":1,"line":48},
+          {"name":"o_n_last","dir":"output","width":1,"line":49}
+        ],
+        "instances": [],
+        "regs": [],
+        "wires": [],
+        "assigns": [
+          {"lhs":"o_s_next","line":55},
+          {"lhs":"o_n_next","line":57},
+          {"lhs":"o_byte_next","line":59},
+          {"lhs":"o_tx_next","line":61},
+          {"lhs":"o_s_last","line":63},
+          {"lhs":"o_n_last","line":64}
+        ],
+        "always": [],
+        "cases": []
+      }
+    ]},
+    "uart/uart_tx_fsm.v": { "lines": 123, "modules": [
+      { "name": "uart_tx_fsm", "start": 28, "end": 123,
+        "params": [],
+        "localparams": [
+          {"name":"IDLE","value":0,"line":47},
+          {"name":"START","value":1,"line":47},
+          {"name":"DATA","value":2,"line":47},
+          {"name":"STOP","value":3,"line":47}
+        ],
+        "ports": [
+          {"name":"i_state","dir":"input","width":2,"line":30},
+          {"name":"i_tx_ready","dir":"input","width":1,"line":31},
+          {"name":"i_tick","dir":"input","width":1,"line":32},
+          {"name":"i_s_last","dir":"input","width":1,"line":33},
+          {"name":"i_n_last","dir":"input","width":1,"line":34},
+          {"name":"o_state_next","dir":"output","width":2,"line":35},
+          {"name":"o_s_clear","dir":"output","width":1,"line":36},
+          {"name":"o_s_inc","dir":"output","width":1,"line":37},
+          {"name":"o_n_clear","dir":"output","width":1,"line":38},
+          {"name":"o_n_inc","dir":"output","width":1,"line":39},
+          {"name":"o_load","dir":"output","width":1,"line":40},
+          {"name":"o_shift","dir":"output","width":1,"line":41},
+          {"name":"o_tx_data","dir":"output","width":1,"line":42},
+          {"name":"o_tx_level","dir":"output","width":1,"line":43},
+          {"name":"o_tx_done","dir":"output","width":1,"line":44}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"o_state_next","width":2,"array":null,"line":35},
+          {"name":"o_s_clear","width":1,"array":null,"line":36},
+          {"name":"o_s_inc","width":1,"array":null,"line":37},
+          {"name":"o_n_clear","width":1,"array":null,"line":38},
+          {"name":"o_n_inc","width":1,"array":null,"line":39},
+          {"name":"o_load","width":1,"array":null,"line":40},
+          {"name":"o_shift","width":1,"array":null,"line":41},
+          {"name":"o_tx_data","width":1,"array":null,"line":42},
+          {"name":"o_tx_level","width":1,"array":null,"line":43},
+          {"name":"o_tx_done","width":1,"array":null,"line":44}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":49,"kind":"comb"}
+        ],
+        "cases": [
+          {"label":"IDLE","line":62},
+          {"label":"START","line":71},
+          {"label":"DATA","line":85},
+          {"label":"STOP","line":104}
+        ]
+      }
+    ]},
+    "uart/uart_tx_regs.v": { "lines": 62, "modules": [
+      { "name": "uart_tx_regs", "start": 25, "end": 62,
+        "params": [
+          {"name":"NB_DATA","value":8,"line":27},
+          {"name":"N_TICKS","value":16,"line":28}
+        ],
+        "localparams": [],
+        "ports": [
+          {"name":"i_clk","dir":"input","width":1,"line":31},
+          {"name":"i_reset","dir":"input","width":1,"line":32},
+          {"name":"i_state_next","dir":"input","width":2,"line":33},
+          {"name":"i_s_next","dir":"input","width":"$clog2(N_TICKS)","line":34},
+          {"name":"i_n_next","dir":"input","width":"$clog2(NB_DATA)","line":35},
+          {"name":"i_byte_next","dir":"input","width":"NB_DATA","line":36},
+          {"name":"i_tx_next","dir":"input","width":1,"line":37},
+          {"name":"o_state","dir":"output","width":2,"line":38},
+          {"name":"o_s","dir":"output","width":"$clog2(N_TICKS)","line":39},
+          {"name":"o_n","dir":"output","width":"$clog2(NB_DATA)","line":40},
+          {"name":"o_byte","dir":"output","width":"NB_DATA","line":41},
+          {"name":"o_tx","dir":"output","width":1,"line":42}
+        ],
+        "instances": [],
+        "regs": [
+          {"name":"o_state","width":2,"array":null,"line":38},
+          {"name":"o_s","width":"$clog2(N_TICKS)","array":null,"line":39},
+          {"name":"o_n","width":"$clog2(NB_DATA)","array":null,"line":40},
+          {"name":"o_byte","width":"NB_DATA","array":null,"line":41},
+          {"name":"o_tx","width":1,"array":null,"line":42}
+        ],
+        "wires": [],
+        "assigns": [],
+        "always": [
+          {"line":45,"kind":"ff"}
+        ],
+        "cases": []
+      }
+    ]}
+  }
+}
