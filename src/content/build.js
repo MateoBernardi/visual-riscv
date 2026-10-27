@@ -310,10 +310,6 @@ ebreak
 `,
         expect: { regs: { x4: 0x7ab, x5: 0xab000000, x6: 0xab }, mem: { 0: 0xab000000 } },
         note: '<p>Resultado esperado según la ISA (y según el modelo de referencia en Python). Elegí a propósito un <code>rs2</code> cuyos bytes 0 y 1 son distintos (<code>0xAB</code> y <code>0x07</code>) para que un error de carril se note.</p>',
-        knownIssue: {
-          html: '<p><b>Hallazgo en el RTL actual.</b> En <code>dmem.v</code>, el byte que recibe el carril 3 se calcula como <code>d3 = sw ? wdata[31:24] : wdata[15:8]</code>. Eso es correcto para <code>sh</code> (el byte alto de la media palabra) pero no para <code>sb</code>, donde el carril 3 debería recibir <code>wdata[7:0]</code>. Resultado: un <code>sb</code> a una dirección terminada en <code>11</code> guarda <code>rs2[15:8]</code> en vez de <code>rs2[7:0]</code>. El programa de prueba del repo no lo detecta porque su único <code>sb</code> usa la dirección 5 (byte 1). Es justamente el tipo de error que la categoría "cada desplazamiento" existe para encontrar. Arreglo: <code>d3 = sw ? wdata[31:24] : (sb ? wdata[7:0] : wdata[15:8])</code>. Este simulador reproduce el RTL tal cual está.</p>',
-          simulated: { regs: { x4: 0x7ab, x5: 0x07000000, x6: 0x07 }, mem: { 0: 0x07000000 } },
-        },
       },
     ],
   },

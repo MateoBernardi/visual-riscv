@@ -50,7 +50,7 @@ function dmemWrite(dmem, addr, wdata, funct3) {
   const d0 = wdata & 0xff;
   const d1 = sb ? wdata & 0xff : (wdata >>> 8) & 0xff;
   const d2 = sw ? (wdata >>> 16) & 0xff : wdata & 0xff;
-  const d3 = sw ? (wdata >>> 24) & 0xff : (wdata >>> 8) & 0xff;
+  const d3 = sw ? (wdata >>> 24) & 0xff : sb ? wdata & 0xff : (wdata >>> 8) & 0xff;
   const d = [d0, d1, d2, d3];
   let w = dmem[idx];
   for (let k = 0; k < 4; k++) if (be & (1 << k)) w = (w & ~(0xff << (k * 8))) | (d[k] << (k * 8));

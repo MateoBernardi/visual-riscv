@@ -2,8 +2,8 @@
 // HOME = { title, tagline, intro: html, features: [{icon, title, text}], paths: [{id, title, text, cta}], repo: {label, href} }
 export const HOME = {
   title: 'visual·RISCV',
-  tagline: 'Una guía visual para entender la implementación de un RV32I hecha en este repo.',
-  intro: '<p>Esta página espeja, ciclo a ciclo, un procesador <b>RISC-V RV32I de 5 etapas</b> escrito en Verilog para una FPGA Nexys4 DDR, junto con su <b>debug unit por UART</b>. Cada cable que se ilumina corresponde a una señal del RTL, y cada bloque enlaza al archivo exacto en GitHub.</p><p>La idea es que, con esta guía y el repo, puedas entender el chip completo, las decisiones de diseño y sus alternativas, y luego armar, probar y verificar tu propio RISC-V desde cero.</p>',
+  tagline: 'Una guía visual para entender la implementación de un RV32I hecha en el repositorio.',
+  intro: '<p>Esta página espeja un procesador <b>RISC-V RV32I de 5 etapas</b> escrito en Verilog para una FPGA Nexys4 DDR, junto con su <b>debug unit por UART</b>. Cada bloque enlaza al archivo exacto en GitHub.</p><p>La idea es que, con esta guía y el repo, puedas entender el chip completo, las decisiones de diseño y sus alternativas, y luego armar, probar y verificar tu propio RISC-V desde cero.</p>',
   features: [
     { icon: '🧊', title: 'Pipeline en 3D', text: 'Las cinco etapas, los cables y los datos viajando ciclo a ciclo.' },
     { icon: '🔍', title: 'Por dentro', text: 'Entrá a cada módulo: registros, muxes, FSMs y señales reales.' },

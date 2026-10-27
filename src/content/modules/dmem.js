@@ -13,7 +13,7 @@ const DSRC = [
   'wdata[7:0]: siempre el byte bajo de rs2.',
   '<code>sb ? wdata[7:0] : wdata[15:8]</code>: en SB repite el byte bajo; en SH/SW toma el byte 1.',
   '<code>sw ? wdata[23:16] : wdata[7:0]</code>: en SW toma el byte 2; en SB/SH repite el byte bajo (así SH en la mitad alta de la palabra queda bien).',
-  '<code>sw ? wdata[31:24] : wdata[15:8]</code>: en SW toma el byte 3; en SB/SH toma el byte 1.',
+  '<code>sw ? wdata[31:24] : (sb ? wdata[7:0] : wdata[15:8])</code>: en SW toma el byte 3; en SB repite el byte bajo; en SH toma el byte 1 (el alto de la media palabra).',
 ];
 
 export default {
@@ -44,7 +44,7 @@ export default {
         <li><b>Lectura asincrónica</b>: ${g('word')} <code>= {lane3, lane2, lane1, lane0}[widx]</code>; ${g('b')} elige el byte con <code>word[boff*8 +: 8]</code> y ${g('h')} la media palabra con <code>boff[1]</code>. El <code>case (funct3)</code> final extiende: LB, LH con signo; LW; LBU, LHU con ceros; cualquier otro funct3 da 0.</li>
         <li><b>Puerto de debug</b>: ${g('dbg_data')} lee una palabra completa por índice, sin pasar por funct3.</li>
       </ul>
-      <p>Propiedades de esta implementación que conviene saber: no hay trap en accesos desalineados, sino que se <b>alinean silenciosamente</b>: LW/SW ignoran <code>boff</code> por completo, LH/LHU/SH usan solo <code>boff[1]</code>. La dmem tampoco recibe la señal <code>mem_read</code>: siempre calcula <code>rdata</code>, y el pipeline la usa únicamente si <code>wb_sel = 01</code>. Además, tal como está escrito <code>d3</code>, un SB con <code>boff = 3</code> escribe en el carril 3 el valor <code>wdata[15:8]</code> en vez de <code>wdata[7:0]</code> (el resto de offsets de SB sí quedan bien).</p>`,
+      <p>Propiedades de esta implementación que conviene saber: no hay trap en accesos desalineados, sino que se <b>alinean silenciosamente</b>: LW/SW ignoran <code>boff</code> por completo, LH/LHU/SH usan solo <code>boff[1]</code>. La dmem tampoco recibe la señal <code>mem_read</code>: siempre calcula <code>rdata</code>, y el pipeline la usa únicamente si <code>wb_sel = 01</code>.</p>`,
     whyThisChoice: `
       <p>Los carriles de byte con lectura asincrónica dan un acceso de un ciclo y mapean a LUTRAM. La alternativa más común en FPGA es la <b>BRAM síncrona</b>: más capacidad, pero el dato llega un ciclo después, lo que agrega una etapa o un load-use de 2 ciclos (VexRiscv, Rocket). Otras: <b>memoria unificada Von Neumann</b> (un solo puerto; IF y MEM compiten por él), <b>cachés L1 + memoria externa</b> para GBs de memoria (Cortex-A, BOOM), <b>MMIO + TCM</b> con un decodificador de direcciones para periféricos de latencia fija (Cortex-M, Ibex), y soporte de <b>acceso desalineado</b> con trap o con dos accesos.</p>
       <p>Alinear silenciosamente es lo más barato (sin excepciones, que este core no tiene), pero un programa con un bug de alineación produce resultados incorrectos sin avisar, algo que un procesador con trap haría visible. Notar que en esta implementación la memoria vive en la etapa MEM, de modo que un load tarda: ALU (dirección) → dmem (lectura combinacional) → mux <code>wb_sel</code>, todo dentro de un ciclo, lo que explica que el load-use necesite un stall de un ciclo.</p>`,

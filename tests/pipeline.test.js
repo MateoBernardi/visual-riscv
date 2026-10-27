@@ -271,3 +271,28 @@ describe('pipeline sin forwarding (alternativa didáctica)', () => {
     expect(p.regs[4]).toBe(7);
   });
 });
+
+describe('dmem: stores parciales en cada desplazamiento', () => {
+  it('sb en los 4 bytes y sh en las 2 mitades guardan el byte/media palabra baja de rs2', () => {
+    const p = mk(prog(`
+li   x1, 0x11223344
+li   x2, 0xA7AB
+sw   x1, 0(x0)
+sw   x1, 4(x0)
+sw   x1, 8(x0)
+sw   x1, 12(x0)
+sb   x2, 0(x0)
+sb   x2, 5(x0)
+sb   x2, 10(x0)
+sb   x2, 15(x0)
+sw   x1, 16(x0)
+sw   x1, 20(x0)
+sh   x2, 16(x0)
+sh   x2, 22(x0)
+ebreak
+`));
+    runToHalt(p);
+    expect(Array.from(p.snapshot().dmem.slice(0, 6))).toEqual(
+      [0x112233ab, 0x1122ab44, 0x11ab3344, 0xab223344, 0x1122a7ab, 0xa7ab3344]);
+  });
+});

@@ -104,7 +104,7 @@ export const LESSONS = [
 <li>¿Cómo se detiene la máquina? (cualquier SYSTEM; el reloj nunca se toca)</li>
 <li>¿De qué tamaño son las memorias? (1 KB de instrucciones y 1 KB de datos)</li>
 </ul>
-<p>Las lecciones que siguen recorren esas decisiones una por una, con sus alternativas. Cuando veas un texto que dice "en esta implementación", quiere decir que es una elección de este diseño y no algo que impone RISC-V.</p>`,
+<p>Las lecciones que siguen recorren esas decisiones una por una, con sus alternativas.</p>`,
       },
     ],
     watch: [
@@ -147,8 +147,8 @@ export const LESSONS = [
         heading: 'Los módulos dentro de la FPGA',
         html: `<p>El módulo de más alto nivel es ${gh('top/top_riscv.v', 'module:top_riscv', 'top_riscv')}. Instancia:</p>
 <ul>
-<li><b>Un MMCM</b> que toma el oscilador de 100 MHz de la placa y genera el reloj del sistema a <b>50 MHz</b>. Se usa porque el camino crítico del pipeline no cierra a 100 MHz (más en la lección de timing de la guía "Construí tu propio RISC-V").</li>
-<li><b>reset_gen</b>: genera un reset de encendido (unos pocos ciclos) y sincroniza el botón de reset de la placa. También mantiene el sistema en reset mientras el MMCM no reporte <code>locked</code>.</li>
+<li><b>Un MMCM</b> que toma el oscilador de 100 MHz de la placa y genera el reloj del sistema a <b>50 MHz</b>. Se usa porque el camino crítico del pipeline no logra cumplir los requerimientos de tiempo para funcionar de manera estable a esa frecuencia de reloj (más en la lección de timing de la guía "Construí tu propio RISC-V").</li>
+<li><b>reset_gen</b>: genera un reset de encendido (un pulso de unos pocos ciclos) y sincroniza el botón de reset de la placa. También mantiene el sistema en reset mientras el MMCM no reporte <code>locked</code>.</li>
 <li><b>sync_2ff</b>: un sincronizador de dos flip-flops para la línea RX, que llega del exterior y no está sincronizada con el reloj.</li>
 <li><b>uart_core</b>: el receptor, el transmisor, un generador de baud rate y dos FIFOs de 4 bytes (una por sentido). No sabe nada del procesador.</li>
 <li><b>debug_unit</b>: una máquina de estados que interpreta los comandos de la PC. No sabe nada de bits seriales: solo ve bytes que salen y entran de las FIFOs.</li>
@@ -229,7 +229,7 @@ export const LESSONS = [
 <li><b>MEM.</b> La memoria de datos se lee o se escribe. Además, un multiplexor (<code>wb_sel</code>) elige qué valor produce la instrucción: resultado de la ALU, dato de memoria, <code>PC+4</code> o el inmediato (LUI).</li>
 <li><b>WB (write-back).</b> En esta implementación es solo un registro (MEM/WB) y el cable de vuelta al banco de registros.</li>
 </ul>
-<p>Dos decisiones de este diseño difieren del esquema de libro y conviene notarlas ya. Primero, <b>el mux <code>wb_sel</code> está en MEM y no en WB</b>: así el valor ya elegido se puede reenviar a EX por forwarding. Segundo, <b>los saltos se resuelven en EX</b>, no antes. Las dos tienen consecuencias que se ven en las lecciones siguientes.</p>`,
+<p>Dos decisiones de este diseño que conviene aclarar. Primero, <b>el mux <code>wb_sel</code> está en MEM y no en WB</b>: así el valor ya elegido se puede reenviar a EX por forwarding. Segundo, <b>los saltos se resuelven en EX</b>, no antes. Las dos tienen consecuencias que se ven en las lecciones siguientes.</p>`,
       },
       {
         heading: 'Las dos flechas que van hacia atrás',
@@ -279,7 +279,7 @@ export const LESSONS = [
       {
         heading: 'El principio: todo viaja con la instrucción',
         html: `<p>En cada flanco de reloj, todas las instrucciones avanzan una etapa a la vez. Lo que la etapa siguiente necesite de la instrucción tiene que estar en el registro que las separa, porque la etapa anterior ya va a estar ocupada con otra instrucción.</p>
-<p>El error clásico (el libro lo muestra a propósito) es escribir en WB usando el <code>rd</code> que en ese momento está en IF/ID. Ese <code>rd</code> pertenece a otra instrucción, tres posiciones más atrás. El número de registro destino tiene que viajar desde ID hasta MEM/WB. Lo mismo vale para las señales de control: se generan todas en ID y cada una viaja hasta la etapa donde se usa; ahí se consume y deja de propagarse. Por eso suelen agruparse en señales "de EX", "de MEM" y "de WB".</p>`,
+<p>El error clásico es escribir en WB usando el <code>rd</code> que en ese momento está en IF/ID. Ese <code>rd</code> pertenece a otra instrucción, tres posiciones más atrás. El número de registro destino tiene que viajar desde ID hasta MEM/WB. Lo mismo vale para las señales de control: se generan todas en ID y cada una viaja hasta la etapa donde se usa; ahí se consume y deja de propagarse. Por eso suelen agruparse en señales "de EX", "de MEM" y "de WB".</p>`,
       },
       {
         heading: 'Qué lleva cada registro en esta implementación',
@@ -345,7 +345,7 @@ export const LESSONS = [
         html: `<p>Un riesgo de datos aparece cuando una instrucción necesita un valor que otra anterior todavía no terminó de calcular. Entre dos instrucciones <i>i</i> (anterior) y <i>j</i> (posterior) hay tres tipos:</p>
 <ul>
 <li><b>RAW</b> (read after write): <i>j</i> lee un registro antes de que <i>i</i> lo escriba. Es el caso central.</li>
-<li><b>WAR</b> (write after read) y <b>WAW</b> (write after write): no ocurren en este pipeline, porque todas las instrucciones leen en ID, escriben en WB y siempre en orden de programa. Aparecen en procesadores fuera de orden o con etapas de distinta longitud. Saber explicar por qué no ocurren en un diseño propio es una buena respuesta de defensa.</li>
+<li><b>WAR</b> (write after read) y <b>WAW</b> (write after write): no ocurren en este pipeline, porque todas las instrucciones leen en ID, escriben en WB y siempre en orden de programa. Aparecen en procesadores fuera de orden o con etapas de distinta longitud.</li>
 </ul>
 <pre>sub x2, x1, x3     # escribe x2 en WB (ciclo 5)
 and x12, x2, x5    # necesita x2 en EX (ciclo 4)
@@ -454,9 +454,9 @@ siguiente            IF  IF(stall)  ID  EX  MEM</pre>
       },
       {
         heading: 'Observación: ¿hace falta este stall en esta implementación?',
-        html: `<p>Una pregunta interesante, y que se puede comprobar con el simulador de esta web. El argumento del libro ("el dato recién existe al final de MEM") supone que el valor sale tarde dentro del ciclo. Pero en este diseño la <b>memoria de datos es de lectura combinacional</b> y su salida entra al multiplexor <code>wb_sel</code> en MEM, y de ahí a <code>mem_result</code>, que es justamente la fuente de forwarding EX/MEM. En otras palabras: si el load estuviera en MEM y su dependiente en EX en el mismo ciclo, <code>forward_unit</code> elegiría <code>10</code> y la ALU recibiría el dato leído de dmem <i>en ese mismo ciclo</i>, encadenando la lectura de la memoria con la suma de la ALU.</p>
+        html: `<p>Una pregunta interesante, y que se puede comprobar con el simulador de esta web. El argumento ("el dato recién existe al final de MEM") supone que el valor sale tarde dentro del ciclo. Pero en este diseño la <b>memoria de datos es de lectura combinacional</b> y su salida entra al multiplexor <code>wb_sel</code> en MEM, y de ahí a <code>mem_result</code>, que es justamente la fuente de forwarding EX/MEM. En otras palabras: si el load estuviera en MEM y su dependiente en EX en el mismo ciclo, <code>forward_unit</code> elegiría <code>10</code> y la ALU recibiría el dato leído de dmem <i>en ese mismo ciclo</i>, encadenando la lectura de la memoria con la suma de la ALU.</p>
 <p>Esa ruta (dmem → forwarding → ALU → branch → flush) ya existe en el hardware: es la que el README del top identifica como camino crítico del diseño. O sea que quitar el stall no agregaría hardware ni alargaría ese camino. Sin el stall, el resultado seguiría siendo correcto, y se ahorraría un ciclo por cada load-use. En un experimento con el código del simulador de esta web (quitando el efecto del stall), 300 programas aleatorios con loads seguidos de su uso (en rs1, en rs2 y como dato de un store) dieron los mismos resultados finales que el modelo de referencia en Python.</p>
-<p>¿Por qué entonces existe el stall? Porque es el diseño estándar del libro, y es el correcto cuando la dmem es síncrona (BRAM), cuando el mux de resultado está en WB, o cuando se quiere cortar el camino crítico con un registro. Que sea "obligatorio" o "opcional" depende de la microarquitectura, no de la ISA. Esta variante <b>no existe en el RTL</b>: es una sugerencia de optimización que se puede probar quitando el efecto de <code>stall</code> en <code>hazard_unit.v</code> y corriendo el testbench del pipeline.</p>`,
+<p>¿Por qué entonces existe el stall? Porque es el diseño estándar de libro, y es el correcto cuando la dmem es síncrona (BRAM), cuando el mux de resultado está en WB, o cuando se quiere cortar el camino crítico con un registro. Que sea "obligatorio" o "opcional" depende de la microarquitectura, no de la ISA. Esta variante <b>no existe en el RTL</b>: es una sugerencia de optimización que se puede probar quitando el efecto de <code>stall</code> en <code>hazard_unit.v</code> y corriendo el testbench del pipeline.</p>`,
       },
       {
         heading: 'El stall falso: comparar campos crudos',
@@ -621,16 +621,6 @@ addi x1, x0, 5      # en ID: imm = 5, o sea inst[24:20] = 00101 = "x5" (!)</pre>
         heading: 'Accesos desalineados',
         html: `<p>Un acceso está alineado si su dirección es múltiplo de su tamaño (4 para palabras, 2 para medias palabras). La especificación de RISC-V permite que el hardware soporte accesos desalineados o los trate como excepción. <b>Este diseño no hace ninguna de las dos cosas</b>: no hay traps, y los bits bajos de la dirección simplemente se usan como están. Un <code>lh</code> en una dirección impar o un <code>lw</code> en una dirección no múltiplo de 4 entrega un resultado sin sentido. Un diseño más robusto podría marcar el error en un registro visible por la debug unit, o descomponer el acceso en dos accesos alineados.</p>
 <p>También conviene saber qué pasa con un load con un <code>funct3</code> inexistente: entrega 0. Y que los stores con <code>funct3</code> inválido (por ejemplo, <code>funct3 = 011</code>) no escriben.</p>`,
-      },
-      {
-        heading: 'Un hallazgo: SB en el byte 3',
-        html: `<p>La lógica de carriles tiene un caso por cada combinación de tamaño y desplazamiento, y es fácil que uno quede mal sin que se note con valores "lindos". Revisando el código se encuentra una asimetría. Los cuatro bytes que se presentan a los carriles son:</p>
-<pre>d0 = wdata[7:0]
-d1 = sb ? wdata[7:0]   : wdata[15:8]
-d2 = sw ? wdata[23:16] : wdata[7:0]
-d3 = sw ? wdata[31:24] : wdata[15:8]</pre>
-<p>Los tres primeros están bien. Pero en <code>d3</code> falta el caso de SB: para <code>sb</code> a una dirección terminada en <code>11</code>, el carril 3 debería recibir <code>wdata[7:0]</code> (el byte bajo de <code>rs2</code>) y recibe <code>wdata[15:8]</code>. El resultado es que ese store guarda un byte equivocado. El programa de prueba del repo no lo detecta porque su único <code>sb</code> usa la dirección 5 (el carril 1). El simulador de esta web reproduce el RTL tal como está: ejecutá el programa de la categoría "Loads y stores parciales" para verlo (<code>sb</code> de <code>0x7AB</code> en la dirección 3 guarda <code>0x07</code> en lugar de <code>0xAB</code>). Una corrección posible: <code>d3 = sw ? wdata[31:24] : (sb ? wdata[7:0] : wdata[15:8])</code>.</p>
-<p>Es una buena ilustración de por qué la verificación sistemática, con valores distintos en cada byte y probando cada desplazamiento, vale más que un único programa grande que "anda".</p>`,
       },
     ],
     watch: [
@@ -1360,7 +1350,7 @@ cpu_reset  = reset_del_sistema | cpu_rst | loading</pre>
       },
       {
         heading: 'Cómo probarlo y trampas',
-        html: `<p>Un testbench por memoria: escribir y leer cada byte, cada media palabra y cada palabra (incluyendo que un store parcial no pise el resto); cargar la imem byte a byte y comparar contra un modelo; verificar el relleno con NOP. La trampa más común es probar solo las palabras completas: ver el hallazgo de <code>sb</code> en el byte 3 en la lección de memoria de datos. Otra: el orden de bytes (el byte <i>k</i> del programa va en la dirección <i>k</i>).</p>`,
+        html: `<p>Un testbench por memoria: escribir y leer cada byte, cada media palabra y cada palabra (incluyendo que un store parcial no pise el resto); cargar la imem byte a byte y comparar contra un modelo; verificar el relleno con NOP. La trampa más común es probar solo las palabras completas, o los stores parciales en un único desplazamiento. Otra: el orden de bytes (el byte <i>k</i> del programa va en la dirección <i>k</i>).</p>`,
       },
       {
         heading: 'Lectura asíncrona o síncrona: qué cambia en IF y en MEM',
@@ -1374,7 +1364,7 @@ cpu_reset  = reset_del_sistema | cpu_rst | loading</pre>
       },
       {
         heading: 'Cómo probarlo y errores comunes',
-        html: `<p>Un testbench por memoria: escribir y leer cada byte, media palabra y palabra en todas las posiciones, comprobando que los stores parciales no pisen el resto de la palabra (ahí es donde el repo tiene el bug de <code>sb</code> en el byte 3, descripto en la lección de memoria de datos; el programa de la categoría "Loads y stores parciales" de esta guía lo expone). Para la imem: cargar un programa y comparar palabra por palabra, comprobar el relleno con NOP y que escribir fuera de rango no corrompa nada. ${ext(TB + 'tb_top_riscv.v', 'tb_top_riscv.v')} hace justamente eso con la función <code>check_imem</code> contra un modelo en el propio testbench, incluyendo el caso de un programa demasiado grande. Errores comunes: confundir la dirección de byte con la de palabra al indexar, el orden de bytes (el byte <i>k</i> del programa va en la dirección <i>k</i>), no inicializar la imem (las instrucciones desconocidas pueden ejecutarse) y olvidarse de que un reset no vacía una BRAM.</p>`,
+        html: `<p>Un testbench por memoria: escribir y leer cada byte, media palabra y palabra en todas las posiciones, comprobando que los stores parciales no pisen el resto de la palabra (el programa de la categoría "Loads y stores parciales" de esta guía recorre todos los desplazamientos). Para la imem: cargar un programa y comparar palabra por palabra, comprobar el relleno con NOP y que escribir fuera de rango no corrompa nada. ${ext(TB + 'tb_top_riscv.v', 'tb_top_riscv.v')} hace justamente eso con la función <code>check_imem</code> contra un modelo en el propio testbench, incluyendo el caso de un programa demasiado grande. Errores comunes: confundir la dirección de byte con la de palabra al indexar, el orden de bytes (el byte <i>k</i> del programa va en la dirección <i>k</i>), no inicializar la imem (las instrucciones desconocidas pueden ejecutarse) y olvidarse de que un reset no vacía una BRAM.</p>`,
       },
     ],
     watch: [
@@ -1671,7 +1661,7 @@ hold:  t_clk→q + t_lógica,min ≥ t_hold + t_skew</pre>
       },
       {
         heading: 'Testbenches que se verifican solos y golden model',
-        html: `<p>Mirar formas de onda sirve para encontrar un error, no para confirmar que no hay. Un testbench <b>autoverificable</b> compara cada resultado y reporta PASS/FAIL. Para saber qué es "esperado" usá un <b>golden model</b>: un simulador simple de una instrucción por vez. En este repo es ${ext(HOST + 'tests/rv32i_model.py', 'host/tests/rv32i_model.py')}: ensambla el programa, lo ejecuta y escribe <code>pipeline_prog.hex</code> y <code>pipeline_exp.hex</code> (32 registros + 16 palabras de dmem), que los dos testbenches leen con <code>$readmemh</code>. Si cambia el CPU, se regeneran. Una técnica potente: generar miles de programas aleatorios y comparar el pipeline contra el modelo; en esta web se usó para validar el simulador y apareció el bug de <code>sb</code> en el byte 3, que el programa fijo no cubre.</p>`,
+        html: `<p>Mirar formas de onda sirve para encontrar un error, no para confirmar que no hay. Un testbench <b>autoverificable</b> compara cada resultado y reporta PASS/FAIL. Para saber qué es "esperado" usá un <b>golden model</b>: un simulador simple de una instrucción por vez. En este repo es ${ext(HOST + 'tests/rv32i_model.py', 'host/tests/rv32i_model.py')}: ensambla el programa, lo ejecuta y escribe <code>pipeline_prog.hex</code> y <code>pipeline_exp.hex</code> (32 registros + 16 palabras de dmem), que los dos testbenches leen con <code>$readmemh</code>. Si cambia el CPU, se regeneran. Una técnica potente: generar miles de programas aleatorios y comparar el pipeline contra el modelo; en esta web se usó para validar el simulador.</p>`,
       },
       {
         heading: 'Programas de prueba por categoría',
@@ -1683,7 +1673,7 @@ hold:  t_clk→q + t_lógica,min ≥ t_hold + t_skew</pre>
       },
       {
         heading: 'Programas de prueba por categoría, con resultados verificados',
-        html: `<p>La sección de pruebas de esta guía trae programas completos para cada categoría, listos para pegar en el editor, con su resultado esperado y las estadísticas (instrucciones, stalls, saltos, ciclos): instrucciones en los límites, forwarding a distancias 1 a 4, load-use, el registro x0, saltos y jalr con <code>rd == rs1</code>, stores y loads parciales, desplazamientos y los tres casos de HALT (normal, tras un branch tomado y sin HALT). Cada uno se verificó con el simulador y, salvo el caso de <code>sb</code> en el byte 3, contra el modelo de referencia. Usalos como punto de partida de tu propio banco de pruebas y agregá los tuyos cada vez que encuentres un bug: un bug que se arregló sin un test que lo capture vuelve.</p>
+        html: `<p>La sección de pruebas de esta guía trae programas completos para cada categoría, listos para pegar en el editor, con su resultado esperado y las estadísticas (instrucciones, stalls, saltos, ciclos): instrucciones en los límites, forwarding a distancias 1 a 4, load-use, el registro x0, saltos y jalr con <code>rd == rs1</code>, stores y loads parciales, desplazamientos y los tres casos de HALT (normal, tras un branch tomado y sin HALT). Cada uno se verificó con el simulador y contra el modelo de referencia. Usalos como punto de partida de tu propio banco de pruebas y agregá los tuyos cada vez que encuentres un bug: un bug que se arregló sin un test que lo capture vuelve.</p>
 <p>Dos técnicas más: <b>pruebas aleatorias</b> (generar programas con registros elegidos de un conjunto chico para forzar hazards y comparar con el modelo; encontraron el bug de <code>sb</code>) y <b>cuenta de ciclos</b> (<code>4 + N + stalls + 2·saltos tomados</code>), que detecta stalls de más o de menos que el estado final no ve.</p>`,
       },
       {
