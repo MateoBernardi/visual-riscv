@@ -126,7 +126,7 @@ export function mountDebugView(host) {
   let graph = null, bigGraph = null, bigEl = null;
   const showSel = (sel) => {
     clear(fsmInfo);
-    if (sel.type === 'state') fsmInfo.append(h('div', { class: 'tr-h' }, h('b', { class: 'mono' }, sel.name), h('span', { class: 'muted' }, ` código ${sel.state.code}`)), h('div', { class: 'tr-d', html: sel.state.desc }), sel.state.effect ? h('div', { class: 'eff-mini' }, h('div', {}, h('b', {}, 'CPU '), sel.state.effect.cpu), h('div', {}, h('b', {}, 'IMEM '), sel.state.effect.imem), h('div', {}, h('b', {}, 'UART '), sel.state.effect.uart)) : null);
+    if (sel.type === 'state') fsmInfo.append(h('div', { class: 'tr-h' }, h('b', { class: 'mono' }, sel.name), h('span', { class: 'muted' }, ` código ${sel.state.code}`)), h('div', { class: 'tr-d', html: sel.state.desc }), sel.state.effect ? h('div', { class: 'eff-mini' }, h('div', {}, h('b', {}, 'CPU '), sel.state.effect.cpu), h('div', {}, h('b', {}, 'IMEM '), sel.state.effect.imem), h('div', {}, h('b', {}, 'UART '), sel.state.effect.uart)) : '');
     else fsmInfo.append(...sel.transitions.map((t) => h('div', { class: 'tr-block' }, h('div', { class: 'tr-h' }, h('b', { class: 'mono' }, t.from), h('span', { class: 'arr' }, t.from === t.to ? '↺' : '→'), h('b', { class: 'mono' }, t.to)), h('div', { class: 'tr-c mono' }, 'si ', h('span', {}, t.cond)), t.actions ? h('div', { class: 'tr-a mono' }, 'hace ', h('span', {}, t.actions)) : null, t.effect ? h('div', { class: 'eff-mini' }, h('div', {}, h('b', {}, 'CPU '), t.effect.cpu), h('div', {}, h('b', {}, 'IMEM '), t.effect.imem), h('div', {}, h('b', {}, 'UART '), t.effect.uart)) : null)));
   };
   function buildGraph() {

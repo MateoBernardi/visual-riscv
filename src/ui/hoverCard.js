@@ -22,14 +22,14 @@ export function createHoverCard(host, trackEl) {
     clearTimeout(timer);
     timer = setTimeout(() => {
       clear(card);
-      card.append(
+      card.append(...[
         h('div', { class: 'hc-top' }, d.eyebrow ? h('span', { class: 'eyebrow' }, d.eyebrow) : null, d.stage ? h('span', { class: 'chip stage-chip', style: { background: STAGE_COLORS[d.stage] || 'var(--teal)' } }, d.stage) : null),
         h('b', { class: 'hc-t' }, d.title),
         d.meta && d.meta.length ? h('div', { class: 'hc-meta' }, d.meta.map((m) => h('span', { class: 'chip' }, m))) : null,
         d.value != null ? h('div', { class: 'hc-v' }, h('span', {}, 'valor ahora'), h('b', { class: 'mono' }, d.value)) : null,
         d.text ? h('p', { class: 'hc-p' }, cut(strip(d.text), 280)) : null,
         d.rows && d.rows.length ? h('div', { class: 'hc-rows' }, d.rows.map((r) => h('div', {}, h('span', { class: 'mono' }, r[0]), h('b', { class: 'mono' }, r[1])))) : null,
-        d.hint ? h('div', { class: 'hc-hint' }, d.hint) : null);
+        d.hint ? h('div', { class: 'hc-hint' }, d.hint) : null].filter(Boolean));
       card.hidden = false; shown = true; place();
     }, 90);
   }

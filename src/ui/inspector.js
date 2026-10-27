@@ -189,7 +189,8 @@ export function createInspector(root, cb = {}) {
       btn.textContent = 'Ocultar el grafo'; big.hidden = false; big.textContent = 'Ampliar ⤢';
       refreshFsm(live.ctx);
     });
-    wrap.append(fsm.explain ? h('div', { class: 'prose', html: fsm.explain }) : null, h('div', { class: 'fsm-bar' }, btn, big, curLabel), graphBox, h('h5', { class: 'fsm-h' }, 'Transiciones'), trTable, h('h5', { class: 'fsm-h' }, 'Estados'), states);
+    if (fsm.explain) wrap.append(h('div', { class: 'prose', html: fsm.explain }));
+    wrap.append(h('div', { class: 'fsm-bar' }, btn, big, curLabel), graphBox, h('h5', { class: 'fsm-h' }, 'Transiciones'), trTable, h('h5', { class: 'fsm-h' }, 'Estados'), states);
     live.fsm = { curLabel: curLabel.querySelector('b'), wrap };
     return wrap;
   }
