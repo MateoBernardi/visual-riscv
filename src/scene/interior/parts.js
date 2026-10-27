@@ -47,7 +47,7 @@ export function buildPart(lp, stageColor, schema) {
   const mats = [];
   const bodies = [];
   const mk = (c, o = {}) => { const m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.03, emissive: '#000000', emissiveIntensity: 0, ...o }); mats.push(m); return m; };
-  const plain = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, ...o });
+  const plain = (c, o = {}) => { const m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, ...o }); m.userData.merge = true; return m; };
   const mixK = { reg: 0.35, ff: 0.4, mux: 0.28, adder: 0.3, cmp: 0.22, logic: 0.12, decoder: 0.2, fsm: 0.3, submodule: 0.05, regArray: 0.22, mem: 0.22, const: 0 }[kind] ?? 0.15;
   const bodyColor = kind === 'const' ? new THREE.Color('#f0d98a') : mix('#fffaf0', stageColor, mixK);
   const body = (geo, y, m) => { const mesh = new THREE.Mesh(geo, m || mk(bodyColor)); mesh.position.y = y; mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData = { type: 'part', id: p.id }; g.add(mesh); bodies.push(mesh); return mesh; };
@@ -138,7 +138,7 @@ export function buildPart(lp, stageColor, schema) {
       cap(w * 0.5, 0.3, 0, -d * 0.36);
       if (p.drill) {
         const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.9, 12), plain(stageColor, { emissive: stageColor, emissiveIntensity: 0.5 }));
-        arrow.rotation.x = Math.PI; arrow.position.set(w / 2 - 1.1, h + 1.1, d / 2 - 1); arrow.userData.bob = true; g.add(arrow);
+        arrow.rotation.x = Math.PI; arrow.position.set(w / 2 - 1.1, h + 1.1, d / 2 - 1); arrow.userData.bob = true; arrow.userData.nomerge = true; g.add(arrow);
         ring = { arrow };
       }
       break;
@@ -153,7 +153,31 @@ export function buildPart(lp, stageColor, schema) {
       cap(w * 0.8, d * 0.18, 0, -d * 0.3);
     }
   }
+  consolidate();
   return { group: g, bodies, mats, height: h, ring };
+
+  // cuerpo + tapa + detalles estáticos (sin textura) → UNA malla con color por vértice: una draw call por parte
+  function consolidate() {
+    const list = g.children.filter((c) => c.isMesh && !c.userData.nomerge && c.material && !c.material.map && (mats.includes(c.material) || c.material.userData.merge));
+    if (list.length < 2) return;
+    let geos = list.map((c) => {
+      c.updateMatrix();
+      const geo = c.geometry.clone(); geo.applyMatrix4(c.matrix);
+      const n = geo.attributes.position.count, col = new Float32Array(n * 3), cc = c.material.color;
+      for (let i = 0; i < n; i++) { col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return geo;
+    });
+    if (geos.some((x) => !x.index)) geos = geos.map((x) => (x.index ? x.toNonIndexed() : x));
+    const merged = mergeGeometries(geos);
+    geos.forEach((x) => x.dispose());
+    if (!merged) return;
+    list.forEach((c) => { g.remove(c); c.geometry.dispose(); });
+    mats.length = 0; bodies.length = 0;
+    const mesh = new THREE.Mesh(merged, mk('#ffffff', { vertexColors: true }));
+    mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData = { type: 'part', id: p.id };
+    g.add(mesh); bodies.push(mesh);
+  }
 }
 
 // huella real de la tapa de una parte (para ubicar el título decal)

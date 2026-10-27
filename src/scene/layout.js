@@ -31,6 +31,7 @@ export const BLOCKS = {
   wbMux:     { title: 'MUX WB',   stage: 'MEM', kind: 'mux',     x: 21,    z: 0,    w: 1.6, d: 3,   h: 1.2 },
   memwb:     { title: 'MEM/WB',   stage: 'WB',  kind: 'slab',    x: 24.6,  z: -2,   w: 0.9, d: 22,  h: 3 },
   debug:     { title: 'DEBUG',    stage: null,  kind: 'conn',    x: -22,   z: 15.5, w: 5,   d: 3.4, h: 1.4 },
+  clkrst:    { title: 'CLK/RST',  stage: null,  kind: 'conn',    x: -3,    z: 15.5, w: 5,   d: 3.4, h: 1.3 },
   uart:      { title: 'UART',     stage: null,  kind: 'conn',    x: -29.5, z: 15.5, w: 4,   d: 3,   h: 1.2 },
 };
 export const BLOCK_IDS = Object.keys(BLOCKS);

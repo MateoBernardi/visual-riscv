@@ -19,6 +19,7 @@ import { createRegisters, createMemory } from './ui/state.js';
 import { createVerify } from './ui/verify.js';
 import { createBreadcrumb } from './ui/breadcrumb.js';
 import { createLedTip } from './ui/ledTip.js';
+import { createHoverCard, blockCard, interiorCard } from './ui/hoverCard.js';
 import { createHome } from './ui/home.js';
 import { createInspector } from './ui/inspector.js';
 import { createLessons } from './ui/lessons.js';
@@ -31,7 +32,7 @@ import { h, hex32, safeStorage } from './ui/dom.js';
 
 import { Pipeline, assemble, DebugUnit, PIPELINE_TEST } from './sim/index.js';
 import { EXAMPLES as RAW_EXAMPLES, LESSONS, BLOCK_INFO, EVENT_THEORY, ALTERNATIVES, isaCard } from './content/index.js';
-import { VIEWS, viewForBlock } from './content/modules/index.js';
+import { VIEWS, viewForBlock, rtlPath } from './content/modules/index.js';
 
 // ---------- ejemplos (el programa de prueba completo del repo se carga desde src/sim/programs) ----------
 const EXAMPLES = RAW_EXAMPLES.map((e) => (e.code === '__PIPELINE_TEST__' ? { ...e, code: PIPELINE_TEST } : e));
@@ -41,6 +42,7 @@ const STAGES = ['IF', 'ID', 'EX', 'MEM', 'WB'];
 const STAGE_BLOCK = { IF: 'imem', ID: 'ifid', EX: 'idex', MEM: 'exmem', WB: 'memwb' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const qs0 = new URLSearchParams(location.search);
 const root = document.getElementById('app');
 const visibleRect = (el) => (el && el.offsetParent !== null ? el.getBoundingClientRect() : null);
 let scene = null;
@@ -49,7 +51,7 @@ const shell = createShell(root, {
   onTheme: (t) => scene && scene.setTheme(t),
   onResetView: () => scene && scene.resetView(),
   onLayout: () => setTimeout(() => updateInsets(false), 30),
-  onTop: () => { if (!inDebug) goView(VIEWS.top_riscv, {}); },
+  onTop: () => { if (curSchema) exitToBoard(); selectedBlock = null; focus = null; scene.setSelectedBlock(null); refreshInspector(); shell.setPanel('r', true); },
 });
 scene = createScene(shell.slots.scene, { theme: shell.getTheme() });
 
@@ -64,6 +66,13 @@ const cpiRec = new Map(); // fuente del programa -> { fwd, nofwd }
 // ---------- módulos de UI ----------
 const popups = createPopups(shell.slots.popups, {
   project: (id) => scene.projectAnchor(id),
+  // el riel de explicación va del lado que tiene el panel cerrado (a la derecha si ambos están abiertos)
+  railSide: () => { const lr = visibleRect(shell.slots.leftPanel), rr = visibleRect(shell.slots.rightPanel); return rr && !lr ? 'left' : 'right'; },
+  onRailChange: () => setTimeout(() => {
+    const ri = popups.railInfo(), app = shell.slots.stage.parentElement;
+    app.classList.toggle('rail-r', !!ri && ri.side === 'right'); app.style.setProperty('--rail-w', ri ? ri.width + 'px' : '0px');
+    updateInsets(false);
+  }, 30),
   bounds: () => {
     // los pop-ups nunca tapan la barra superior, las migas ni el dock: quedan entre ambos
     const st = shell.slots.stage.getBoundingClientRect(), dr = visibleRect(shell.slots.dockEl);
@@ -77,6 +86,12 @@ const popups = createPopups(shell.slots.popups, {
 });
 scene.onFrame(popups.update);
 const ledTip = createLedTip(shell.slots.popups);
+const hoverCard = createHoverCard(shell.slots.popups, shell.slots.scene);
+scene.onBlockHover((id) => { if (!id || curSchema) { hoverCard.hide(); return; } hoverCard.show(blockCard(id, BLOCK_INFO[id], pipe && pipe.snapshot())); });
+scene.onInteriorHover((hv) => {
+  const c = hv && curSchema ? interiorCard(hv, curSchema, pipe ? liveCtx() : null) : null;
+  if (c) hoverCard.show(c); else hoverCard.hide();
+});
 scene.onLedHover((d) => {
   if (!d) { ledTip.hide(); return; }
   const snap = pipe && pipe.snapshot();
@@ -167,13 +182,13 @@ shell.slots.crumbs.append(banner);
 function showBanner(schema) {
   if (hierStore.get('vr-hier-banner') === '1') { banner.hidden = true; return; }
   banner.hidden = false; banner.textContent = '';
+  const path = rtlPath(schema.id);
   banner.append(
     h('div', { class: 'hb-t' }, h('b', {}, 'Dónde estás: '), h('code', {}, schema.module), schema.instance ? [' (instancia ', h('code', {}, schema.instance), ')'] : null),
-    h('p', {}, 'Es el interior real del RTL. La ', h('b', {}, 'Vista general'), ' (la placa 3D) es solo un dibujo simplificado del datapath: no es un módulo de Verilog. ',
-      h('b', {}, 'top_riscv'), ' es el módulo top que se sintetiza en la FPGA (MMCM, reset, UART, debug unit y CPU). Subí con ', h('kbd', {}, 'Esc'), ' o con las migas.'),
+    h('p', {}, 'Es el interior real del RTL', path.length > 1 ? [' (', h('code', {}, path.join(' › ')), ')'] : null, '. La ', h('b', {}, 'Vista general'), ' (la placa 3D) es el dibujo simplificado del CPU: de ahí cuelgan todos los módulos. Subí con ', h('kbd', {}, 'Esc'), ' o con las migas.'),
     h('div', { class: 'hb-a' },
       h('button', { class: 'btn small primary', type: 'button', onclick: () => { hierStore.set('vr-hier-banner', '1'); banner.hidden = true; } }, 'Entendido'),
-      schema.parent ? h('button', { class: 'btn small ghost', type: 'button', onclick: () => goView(VIEWS.top_riscv, {}) }, 'Ver top_riscv') : null));
+      h('button', { class: 'btn small ghost', type: 'button', onclick: () => { hierStore.set('vr-hier-banner', '1'); banner.hidden = true; exitToBoard().then(() => shell.slots.stage.querySelector('.pill-top')?.click()); } }, '¿Qué es la Vista general?')));
 }
 const setCrumbs = (schema) => { if (schema) showBanner(schema); else banner.hidden = true; crumbsUi.update(schema); shell.slots.stage.parentElement.classList.toggle('in-module', !!schema); };
 // "Qué mirar en la animación": resalta y centra el bloque
@@ -563,6 +578,7 @@ function leaveDebugMode() {
 // ---------- vistas ----------
 function onView(v) {
   updateInsets(true);
+  scene.setIntro(v === 'home' && !qs0.has('shot') && !matchMedia('(prefers-reduced-motion: reduce)').matches);
   if (v === 'debug' && insideMine) { curSchema = null; insideMine = false; setCrumbs(null); scene.exitView({ animate: false }); }
   if (v === 'debug' && !inDebug) enterDebugMode();
   else if (v !== 'debug' && inDebug) leaveDebugMode();
@@ -579,10 +595,12 @@ function updateInsets(reset = false) {
   if (st.width <= 960) {
     const open = shell.getView() === 'home' || shell.slots.stage.parentElement.classList.contains('sheet-open');
     ins = { top: 64, left: 0, right: 0, bottom: open ? Math.min(shell.slots.sheet.scrollHeight, st.height * 0.58) + 8 : 56 };
+    if (popups.hasRail()) ins.bottom = Math.max(ins.bottom, st.height * 0.4);
   } else {
     const l = visibleRect(shell.slots.leftPanel), d = visibleRect(shell.slots.dockEl);
     const r = visibleRect(shell.slots.rightPanel);
     ins = { top: curSchema ? 112 : 106, left: l ? l.right - st.left + 10 : 0, right: r ? st.right - r.left + 10 : 0, bottom: d ? st.bottom - d.top + 6 : 0 };
+    const ri = popups.railInfo(); if (ri) ins[ri.side] += ri.width + 14; // la placa se encuadra fuera del riel de explicación
   }
   scene.setViewInsets(ins, { reset });
 }

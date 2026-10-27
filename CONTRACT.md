@@ -195,8 +195,10 @@ export default {
   id: 'alu_tp1',                 // único; para módulos reales es el nombre del módulo; las pseudo-vistas usan if_pc, fwd_mux, alu_operands, wb_mux, flow_ctrl
   module: 'alu_tp1',             // módulo Verilog (para una pseudo-vista, el módulo que la contiene: 'riscv_pipeline')
   file: 'pipeline/3_execute/alu.v',
-  instance: 'u_alu',             // nombre de la instancia en el padre (null en la raíz)
-  parent: 'riscv_pipeline',      // id de la vista padre (null en la raíz 'top_riscv')
+  instance: 'u_alu',             // nombre de la instancia en el módulo que la contiene
+  parent: null,                  // id de la vista padre; null = cuelga directo de la Vista general (la placa 3D es la única raíz)
+  within: 'riscv_pipeline',      // solo con parent null: módulo real del RTL donde vive ('top_riscv' | 'riscv_pipeline')
+  instancePath: 'u_cpu.u_alu',   // solo con parent null: cadena de instancias desde top_riscv (se valida contra rtl-index.json)
   blockIds: ['alu'],             // bloques 3D (CONTRACT v1) que entran a esta vista al hacer click
   title: 'ALU', stage: 'EX' | 'IF' | 'ID' | 'MEM' | 'WB' | null,
   kind: 'comb' | 'seq' | 'struct' | 'fsm' | 'mixed',
@@ -261,12 +263,16 @@ Se resuelven contra el objeto de contexto `ctx = { snap, dbg, uart }`:
 | `memwb` | `mem_wb_reg` |
 | `hazard` | `hazard_unit` |
 | `forward` | `forward_unit` |
-| `flush` | `flush_unit` (los detalles de `stop_fetch` y `redirect` van en la vista `flow_ctrl`, hija de `riscv_pipeline`) |
+| `flush` | `flush_unit` (los detalles de `stop_fetch` y `redirect` van en la vista `flow_ctrl`, hija de `flush_unit`) |
 | `debug` | `debug_unit` |
 | `uart` | `uart_core` |
+| `clkrst` | `reset_gen` (el MMCM del top se muestra como parte sin drill; `sync_2ff` es hija, instancia `u_btn_sync`) |
 
-- Raíz: `top_riscv`, con hijos `reset_gen`, `sync_2ff`, `uart_core`, `debug_unit` y `riscv_pipeline`; el MMCM es una parte sin drill.
-- `riscv_pipeline` tiene como hijos todos los módulos del pipeline y las pseudo-vistas.
+Bloque 3D nuevo `clkrst` ("CLK/RST", conector, x=-3, z=15.5) y cable `clkrst-debug` (sys_reset hacia la debug unit; la UART recibe el mismo reset).
+
+- La **Vista general** (placa 3D) es la única raíz. No existen vistas interiores de `top_riscv` ni de `riscv_pipeline`: los módulos de primer nivel (pipeline, `debug_unit`, `uart_core`, `reset_gen`) tienen `parent: null` y declaran `within` + `instancePath` para mostrar "en el RTL: top_riscv › u_cpu › u_alu" en migas e inspector (`rtlPath(viewId)` en `modules/index.js`).
+- La explicación de `top_riscv` y `riscv_pipeline` está en `src/content/overview.js` y se muestra en el inspector de la Vista general cuando no hay bloque seleccionado ("¿Qué es esta vista?").
+- `flow_ctrl` (pseudo-vista de `riscv_pipeline.v`) cuelga de `flush_unit` (parte con drill).
 
 ## Escena interior (src/scene/interior/)
 API agregada a `createScene()`:

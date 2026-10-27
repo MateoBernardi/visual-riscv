@@ -27,12 +27,13 @@ export function createDecalAtlas({ color = '#18213d' } = {}) {
   const mctx = document.createElement('canvas').getContext('2d');
   const SIZE = 66;
   function add(text, x, z, y, maxW, maxH) {
-    if (items.length >= COLS * ROWS || !text) return;
+    if (items.length >= COLS * ROWS || !text) return 0;
     mctx.font = `600 ${SIZE}px "Barlow Semi Condensed", sans-serif`;
     const tw = Math.min(CW - 24, mctx.measureText(text).width + 4);
     // escala (unidades de mundo por pixel del atlas): el texto llena el ancho disponible sin pasar el alto
     const k = Math.min(maxW / tw, maxH / (SIZE * 0.78));
     items.push({ text, x, z, y, w: CW * k, h: CH * k });
+    return tw * k; // ancho real del texto en unidades de mundo
   }
 
   function build() {

@@ -13,7 +13,9 @@ export default {
   module: 'flush_unit',
   file: F,
   instance: 'u_flush',
-  parent: 'riscv_pipeline',
+  parent: null,
+  within: 'riscv_pipeline',
+  instancePath: 'u_cpu.u_flush',
   blockIds: ['flush'],
   title: 'Unidad de flush',
   stage: 'EX',
@@ -50,6 +52,8 @@ export default {
   parts: [
     P('flush_if_id', 'logic', 'flush_if_id', 1, [2, 0], [2, 1], '<code>assign flush_if_id = redirect</code>: la instrucción que se buscó mientras el salto estaba en EX es del camino equivocado.', { live: 'snap.signals.redirect' }),
     P('flush_id_ex', 'logic', 'flush_id_ex', 1, [2, 2], [2, 1], '<code>assign flush_id_ex = redirect</code>: la instrucción que estaba en ID también.', { live: 'snap.signals.redirect' }),
+    { id: 'flow_ctrl', kind: 'logic', label: 'stop_fetch / stall / halt', width: 1, symbol: 'flush_id_ex', at: [4, 1], size: [2, 1], drill: 'flow_ctrl',
+      desc: '<p>Esta unidad solo copia <code>redirect</code>. En <code>riscv_pipeline.v</code> esas salidas se combinan con <code>stop_fetch</code> (halt) y <code>stall</code> (load-use) para decidir qué se congela y qué se anula. Entrá para ver esa lógica de control de flujo.</p>' },
   ],
   nets: [
     N('n_redirect_if', 'port:redirect', 'flush_if_id', 'redirect', 1, 'Viene de EX (OR de branch tomado y jump).', 'snap.signals.redirect'),

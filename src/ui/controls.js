@@ -1,5 +1,16 @@
 import { h } from './dom.js';
 
+// número que "rueda" hasta su nuevo valor (ease-out); no escribe si no cambia
+function tween(el, to, { digits = 0, ms = 380 } = {}) {
+  const from = parseFloat(el.dataset.v ?? el.textContent);
+  el.dataset.v = String(to);
+  if (!isFinite(from) || from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to.toFixed(digits); return; }
+  const t0 = performance.now();
+  cancelAnimationFrame(el._raf);
+  const step = (t) => { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = (from + (to - from) * e).toFixed(digits); if (k < 1) el._raf = requestAnimationFrame(step); };
+  el._raf = requestAnimationFrame(step);
+}
+
 /**
  * Controles de simulación.
  * callbacks: { onReset, onBack, onStep, onRun, onPause, onSpeed(cps), onToggle(name, value) }  name: 'explain' | 'pauseOnEvent' | 'forwarding' | 'uartLoad'
@@ -13,7 +24,7 @@ export function createControls(root, cb = {}) {
   const bRun = mk('accent', '▶ Run', 'Ejecutar continuamente', () => { if (running) cb.onPause && cb.onPause(); else cb.onRun && cb.onRun(); });
   let running = false;
 
-  const speed = h('input', { type: 'range', min: '-1', max: '1.30103', step: '0.01', value: '0', class: 'slider', 'aria-label': 'Velocidad' });
+  const speed = h('input', { type: 'range', min: '-1', max: '1.30103', step: '0.01', value: '0', class: 'slider', 'aria-label': 'Velocidad', title: 'Velocidad de Run en ciclos por segundo' });
   const speedLbl = h('span', { class: 'mono speed-v' }, '1.0 c/s');
   const toCps = (v) => Math.pow(10, parseFloat(v)) ; // 0.1..20 -> limitamos a 0.5..20
   const fromCps = (c) => Math.log10(c);
@@ -31,6 +42,12 @@ export function createControls(root, cb = {}) {
     const text = h('span', {}, label);
     input.addEventListener('change', () => { cb.onToggle && cb.onToggle(name, input.checked); refresh(); });
     const lab = h('label', { class: 'toggle' }, input, h('i'), text);
+    const TIPS = {
+      explain: 'Muestra la teoría del evento de cada ciclo (en el riel lateral) y la ficha de la instrucción que entra a ID',
+      pauseOnEvent: 'Durante Run, frena cuando pasa algo interesante (hazard, stall, flush)',
+      forwarding: 'Apagarlo es una alternativa didáctica: sin forwarding el pipeline frena (stall) en cada dependencia RAW',
+    };
+    if (TIPS[name]) lab.title = TIPS[name];
     if (name === 'uartLoad') lab.title = 'Al cargar un programa, animar la transferencia UART → debug unit → memoria de instrucciones (más lento)';
     toggles[name] = { input, text, lab, label };
     return lab;
@@ -49,13 +66,14 @@ export function createControls(root, cb = {}) {
     row2));
 
   function update(d = {}) {
-    if (d.cycle !== undefined) cycle.lastChild.textContent = String(d.cycle);
+    if (d.cycle !== undefined) { tween(cycle.lastChild, d.cycle, { ms: 220 }); cycle.classList.remove('bump'); void cycle.offsetWidth; cycle.classList.add('bump'); }
     if (d.running !== undefined) { running = d.running; bRun.textContent = running ? '❚❚ Pausa' : '▶ Run'; bRun.classList.toggle('running', running); }
     if (d.canBack !== undefined) bBack.disabled = !d.canBack;
     if (d.halted !== undefined) { stateTag.style.display = d.halted ? '' : 'none'; bStep.disabled = d.halted; bRun.disabled = d.halted; }
     if (d.cpi !== undefined) {
       const c = d.cpi;
-      cpiBox.querySelector('.cpi-v').textContent = c && c.retired ? (c.cycles / c.retired).toFixed(2) : '—';
+      const cv = cpiBox.querySelector('.cpi-v');
+      if (c && c.retired) tween(cv, c.cycles / c.retired, { digits: 2 }); else { cv.textContent = '—'; delete cv.dataset.v; }
       cpiBox.querySelector('.cpi-d').textContent = c ? `${c.cycles} ciclos / ${c.retired} instr.` : '';
       cpiBox.title = 'CPI = ciclos / instrucciones retiradas' + (c ? ` (${c.cycles} ciclos / ${c.retired} instr.)` : '');
       const cmp = c && c.compare;

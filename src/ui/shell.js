@@ -1,5 +1,10 @@
 import { h, safeStorage } from './dom.js';
 
+const NAV_TIPS = {
+  home: 'Presentación y por dónde empezar', lessons: 'Lecciones: ISA, pipeline, hazards, memoria, debug unit y UART',
+  examples: 'Programas de ejemplo para cargar en el simulador', sim: 'Simulador ciclo a ciclo del pipeline sobre la placa 3D',
+  debug: 'Consola de la debug unit: cargar, ejecutar y volcar por UART',
+};
 export const VIEWS = [
   ['home', 'Inicio'],
   ['lessons', 'Lecciones'],
@@ -50,7 +55,7 @@ export function createShell(root, callbacks = {}) {
 
   const navBtns = {};
   const nav = h('nav', { class: 'nav' }, VIEWS.map(([id, label]) => {
-    const b = h('button', { class: 'nav-btn', 'data-view': id, onclick: () => setView(id) }, label);
+    const b = h('button', { class: 'nav-btn', 'data-view': id, title: NAV_TIPS[id], onclick: () => setView(id) }, label);
     navBtns[id] = b; return b;
   }));
   const themeBtn = h('button', { class: 'icon-btn', title: 'Cambiar tema', 'aria-label': 'Cambiar tema', onclick: () => setTheme(theme === 'light' ? 'dark' : 'light', true) });
@@ -85,7 +90,7 @@ export function createShell(root, callbacks = {}) {
   const crumbs = h('div', { class: 'crumbs-host' });
   const tools = h('div', { class: 'scene-tools' },
     h('button', { class: 'pill-btn', title: 'Restablecer vista de cámara', onclick: () => callbacks.onResetView && callbacks.onResetView() }, h('span', { html: ICON_HOME }), 'Vista inicial'),
-    h('button', { class: 'pill-btn pill-top', title: 'Esta vista general es un diagrama simplificado del datapath, no un módulo del RTL. top_riscv es el módulo top real que se sintetiza en la FPGA.', onclick: () => callbacks.onTop && callbacks.onTop() }, 'Ver jerarquía real (top_riscv)'), legend);
+    h('button', { class: 'pill-btn pill-top', title: 'Qué es esta vista: un dibujo simplificado del datapath (no un módulo de Verilog) y cómo se relaciona con top_riscv y riscv_pipeline.', onclick: () => callbacks.onTop && callbacks.onTop() }, '¿Qué es esta vista?'), legend);
   const tabL = h('button', { class: 'edge-tab edge-l', title: 'Mostrar u ocultar el panel izquierdo', 'aria-label': 'Panel izquierdo', onclick: () => setPanel('l', !isPanelOpen('l'), { persist: true }) }, h('span', { class: 'et-ch' }, '‹'), h('span', { class: 'et-t' }, 'Editor'));
   const tabR = h('button', { class: 'edge-tab edge-r', title: 'Mostrar u ocultar el panel derecho', 'aria-label': 'Panel derecho', onclick: () => setPanel('r', !isPanelOpen('r'), { persist: true }) }, h('span', { class: 'et-ch' }, '›'), h('span', { class: 'et-t' }, 'Inspector'));
   const TAB_LABEL = { sim: ['Editor', 'Inspector'], lessons: ['Lección', 'Inspector'], examples: ['Ejemplos', 'Inspector'], debug: ['Consola', 'Inspector'], home: ['', ''] };

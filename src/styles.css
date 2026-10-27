@@ -369,7 +369,7 @@ details.more > summary::before { content: '▸ '; } details.more[open] > summary
 /* ===== etiquetas: anti-solapamiento, detalle según distancia, ocupantes truncados ===== */
 .label-layer > div { transition: opacity .15s; }
 .label-layer [data-h] { opacity: 0; }
-.label-layer[data-lod='2'] .ip-label:not(.hover):not(.hl) .ip-t, .label-layer[data-lod='3'] .ip-label:not(.hover):not(.hl) .ip-t { display: none; }
+.label-layer .ip-label[data-nt]:not(.hover):not(.hl) .ip-t { display: none; }
 .label-layer[data-lod='1'] .ip-label .ip-m, .label-layer[data-lod='1'] .ip-port .ip-v, .label-layer[data-lod='1'] .ip-port .ip-w, .label-layer[data-lod='1'] .ip-port .ip-ext, .label-layer[data-lod='1'] .ip-port .ip-sep, .label-layer[data-lod='1'] .ip-port .ip-arr { display: none; }
 .label-layer[data-lod='2'] .ip-port .ip-ext, .label-layer[data-lod='2'] .ip-port .ip-sep, .label-layer[data-lod='2'] .ip-port .ip-w { display: none; }
 .label-layer[data-lod='1'] .blk-label:not(.hl):not(.hover):not(.sel) .blk-v { display: none; }
@@ -603,7 +603,7 @@ a.gh-link:hover { text-decoration: underline; }
 .ip-label { transform: translateY(-2px); background: var(--label-bg); border: 1px solid var(--line); border-top: 3px solid var(--c, var(--line2)); border-radius: 9px; padding: 2px 8px 3px; box-shadow: var(--shadow-s); text-align: center; white-space: nowrap; max-width: 190px; transition: box-shadow .15s, transform .15s; }
 .ip-label .ip-t { font-family: var(--font-c); font-weight: 600; font-size: 11.5px; letter-spacing: .05em; color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 .ip-label .ip-m { display: flex; gap: 6px; justify-content: center; font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.25; }
-.ip-label .ip-v { color: var(--teal-d); font-weight: 600; } :root[data-theme='dark'] .ip-label .ip-v { color: var(--teal); }
+.ip-label .ip-v { color: var(--teal-d); font-weight: 600; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } :root[data-theme='dark'] .ip-label .ip-v { color: var(--teal); }
 .ip-label:not(.has-v) .ip-v { display: none; }
 .ip-label .ip-enter { font-family: var(--font-c); font-size: 10px; font-weight: 600; letter-spacing: .04em; color: #fff; background: var(--c, var(--teal)); border-radius: 999px; padding: 0 6px; margin-left: 2px; display: inline-block; }
 .ip-label:not(.hover):not(.hl) .ip-en { display: none; }
@@ -841,3 +841,14 @@ a.gh-link:hover { text-decoration: underline; }
   .ae-body { max-height: 38vh; }
 }
 @media (prefers-reduced-motion: reduce) { .xp-conn.go i, .xp-stp.ms-doing, .dv-editor.shake { animation: none; } }
+
+/* resaltado de sintaxis del editor del simulador (mismos tokens que el editor de Debug) */
+.ed-main { --t-mn: #2f5fb3; --t-reg: #157f7d; --t-num: #b0690c; --t-label: #8447c2; --t-dir: #7a6f5d; --t-cmt: #8d8576; --t-punct: #8d8576; --t-bad: #d23b25; --t-sym: #24304a; }
+:root[data-theme='dark'] .ed-main { --t-mn: #8eb4ff; --t-reg: #55d6d3; --t-num: #f6b95d; --t-label: #c79bf3; --t-dir: #a9a08c; --t-cmt: #7d8aa6; --t-punct: #8793ae; --t-bad: #ff7a64; --t-sym: #e4d9c6; }
+.ed-pre { position: absolute; inset: 0; padding: 8px 10px; overflow: hidden; pointer-events: none; font-family: var(--mono); font-size: 12.5px; line-height: var(--lh); white-space: pre; tab-size: 4; color: var(--t-sym); box-sizing: border-box; }
+.ed-ln { height: var(--lh); }
+.ed-ta { color: transparent; caret-color: var(--text); }
+.ed-ta::selection { background: color-mix(in srgb, var(--teal) 35%, transparent); }
+.ed-main .t-mn { color: var(--t-mn); font-weight: 500; } .ed-main .t-reg { color: var(--t-reg); } .ed-main .t-num { color: var(--t-num); }
+.ed-main .t-label { color: var(--t-label); font-weight: 500; } .ed-main .t-dir { color: var(--t-dir); } .ed-main .t-cmt { color: var(--t-cmt); font-style: italic; }
+.ed-main .t-punct { color: var(--t-punct); } .ed-main .t-bad { color: var(--t-bad); text-decoration: wavy underline; } .ed-main .t-sym { color: var(--t-sym); }

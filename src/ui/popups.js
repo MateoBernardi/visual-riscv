@@ -70,7 +70,7 @@ function buildAlt(d) {
 }
 
 /**
- * Pop-ups flotantes anclados a objetos 3D.
+ * Tarjetas de explicación: riel lateral (desktop) / hoja inferior deslizable (móvil), con línea guía al objeto 3D; el modal de alternativas va centrado.
  * callbacks: { project(anchorId) -> {x, y, visible} | null, onClose(id) }
  * API: show({type:'isa'|'event'|'alternatives'|'resolver', anchorId, data, title?, key?, pinned?}) -> id
  *      close(id), closeAll(), closeUnpinned(), update() (reposicionar; llamar cada frame), has(key)
@@ -81,6 +81,25 @@ export function createPopups(layer, cb = {}) {
   layer.append(svg);
   const items = new Map();
   let seq = 0;
+  // Riel "Explicación": las tarjetas (instrucción, evento, por qué funciona) se apilan en una columna lateral, con una línea fina
+  // hasta el bloque 3D, para que la placa quede despejada. En móvil es una hoja inferior con tarjetas deslizables.
+  const railList = h('div', { class: 'rail-list' });
+  const railCount = h('span', { class: 'rail-n' }, '0');
+  const railBtn = h('button', { class: 'icon-btn rail-toggle', title: 'Plegar o desplegar el riel de explicación', 'aria-label': 'Plegar riel', onclick: () => { rail.classList.toggle('collapsed'); railBtn.textContent = rail.classList.contains('collapsed') ? '‹' : '›'; lastRail = ''; if (cb.onRailChange) cb.onRailChange(); update(); } }, '›');
+  const rail = h('aside', { class: 'rail', hidden: true }, h('div', { class: 'rail-head' }, h('span', { class: 'eyebrow' }, 'Explicación'), railCount, railBtn), railList);
+  layer.append(rail);
+  // móvil: el riel arranca como una píldora ("Explicación · 2") y se abre como hoja inferior al tocarla, para no tapar Paso / Run
+  rail.querySelector('.rail-head').addEventListener('click', (e) => {
+    if (layer.clientWidth >= 720 || e.target.closest('.rail-toggle')) return;
+    rail.classList.toggle('m-open'); if (cb.onRailChange) cb.onRailChange();
+  });
+  let lastRail = '';
+  const railCards = () => [...items.values()].filter((p) => p.inRail);
+  function syncRailMeta() {
+    const n = railCards().length;
+    rail.hidden = n === 0; railCount.textContent = String(n);
+    if (cb.onRailChange) cb.onRailChange();
+  }
 
   function show({ type, anchorId, data = {}, title, key, pinned = false }) {
     key = key || `${type}:${anchorId || ''}:${data.mnemonic || data.title || title || ''}`;
@@ -95,17 +114,23 @@ export function createPopups(layer, cb = {}) {
       h('div', { class: 'pu-head' }, h('div', {}, h('span', { class: 'eyebrow' }, kindLabel), h('h3', {}, type === 'isa' ? titleText : titleText)), h('div', { class: 'pu-actions' }, type === 'alternatives' ? null : pinBtn, closeBtn)),
       body);
     glossify(body);
-    layer.append(card);
+    const inRail = type !== 'alternatives';
+    if (inRail) {
+      card.classList.add('rail-card');
+      const fold = h('button', { class: 'icon-btn fold', title: 'Plegar esta tarjeta', 'aria-label': 'Plegar tarjeta', onclick: () => { const c = card.classList.toggle('folded'); fold.textContent = c ? '▾' : '▴'; lastRail = ''; } }, '▴');
+      card.querySelector('.pu-actions').prepend(fold);
+      railList.append(card);
+    } else layer.append(card);
     const line = document.createElementNS(SVGNS, 'g');
     line.innerHTML = '<line x1="0" y1="0" x2="0" y2="0"/><circle r="4"/>';
     svg.append(line);
-    const p = { id, key, type, anchorId, card, line, pinned, born: seq, last: '' };
+    const p = { id, key, type, anchorId, card, line, pinned, born: seq, last: '', inRail };
     if (pinned) { pinBtn.classList.add('on'); card.classList.add('pinned'); }
     items.set(id, p);
     const head = card.firstChild;
-    head.style.cursor = 'grab'; head.title = 'Arrastrá para mover';
+    if (!inRail) { head.style.cursor = 'grab'; head.title = 'Arrastrá para mover'; }
     head.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button')) return;
+      if (inRail || e.target.closest('button')) return;
       const lr = layer.getBoundingClientRect(), cr = card.getBoundingClientRect();
       const dx = e.clientX - cr.left, dy = e.clientY - cr.top;
       head.setPointerCapture(e.pointerId); head.style.cursor = 'grabbing';
@@ -115,6 +140,8 @@ export function createPopups(layer, cb = {}) {
     });
     requestAnimationFrame(() => card.classList.add('in'));
     enforceLimit(id);
+    syncRailMeta();
+    if (inRail) railList.scrollTop = 0;
     update();
     return id;
   }
@@ -128,7 +155,8 @@ export function createPopups(layer, cb = {}) {
   }
   function close(id, silent) {
     const p = items.get(id); if (!p) return;
-    items.delete(id); p.card.remove(); p.line.remove();
+    items.delete(id); p.card.remove(); p.line.remove(); lastRail = '';
+    if (p.inRail) syncRailMeta();
     if (!silent && cb.onClose) cb.onClose(id, p);
   }
   function closeUnpinned(except = []) { for (const p of [...items.values()]) if (!p.pinned && !except.includes(p.key)) close(p.id); }
@@ -140,58 +168,57 @@ export function createPopups(layer, cb = {}) {
     const mobile = W < 720;
     layer.classList.toggle('stack', mobile);
     svg.style.display = mobile ? 'none' : '';
-    if (mobile) return;
-    svg.setAttribute('width', W); svg.setAttribute('height', H);
     const B = cb.bounds ? cb.bounds() : { left: 8, top: 74, right: W - 8, bottom: H - 8 };
     layer.style.setProperty('--pu-max', Math.max(220, B.bottom - B.top) + 'px');
+    // ---- riel ----
+    if (!mobile) {
+      const side = cb.railSide ? cb.railSide() : 'right';
+      const w = rail.classList.contains('collapsed') ? 150 : Math.min(340, Math.max(260, (B.right - B.left) * 0.34));
+      const k = `${side}|${Math.round(B.left)}|${Math.round(B.right)}|${Math.round(B.top)}|${Math.round(B.bottom)}|${w}`;
+      if (k !== lastRail + '') {
+        rail.dataset.side = side;
+        rail.style.top = B.top + 'px'; rail.style.maxHeight = Math.max(160, B.bottom - B.top) + 'px'; rail.style.width = w + 'px';
+        rail.style.left = side === 'left' ? B.left + 'px' : 'auto'; rail.style.right = side === 'right' ? (W - B.right) + 'px' : 'auto';
+      }
+      lastRail = k;
+    } else { rail.style.cssText = ''; rail.dataset.side = 'bottom'; }
+    // posiciones de las tarjetas del riel (para las líneas guía)
+    const lr = layer.getBoundingClientRect();
+    const railRect = !rail.hidden && !mobile ? rail.getBoundingClientRect() : null;
+    const collapsed = rail.classList.contains('collapsed');
     let idx = 0;
     const placed = [];
     for (const p of items.values()) {
       const c = p.card;
+      if (p.inRail) {
+        if (mobile || !railRect || collapsed) { p.line.style.display = 'none'; continue; }
+        const a = cb.project && p.anchorId ? cb.project(p.anchorId) : null;
+        const cr = c.getBoundingClientRect(), lrect = railList.getBoundingClientRect();
+        if (!a || cr.bottom < lrect.top || cr.top > lrect.bottom) { p.line.style.display = 'none'; continue; }
+        const left = rail.dataset.side === 'left';
+        const x1 = (left ? cr.right : cr.left) - lr.left, y1 = Math.min(Math.max(cr.top + Math.min(cr.height, 60) / 2, lrect.top + 8), lrect.bottom - 8) - lr.top;
+        const key = `${Math.round(x1)}|${Math.round(y1)}|${Math.round(a.x)}|${Math.round(a.y)}|${a.visible}`;
+        if (key === p.last) continue;
+        p.last = key;
+        const ln = p.line.firstChild, dot = p.line.lastChild;
+        ln.setAttribute('x1', x1); ln.setAttribute('y1', y1); ln.setAttribute('x2', a.x); ln.setAttribute('y2', a.y);
+        dot.setAttribute('cx', a.x); dot.setAttribute('cy', a.y);
+        p.line.style.display = a.visible ? '' : 'none';
+        continue;
+      }
+      if (mobile) continue;
       const cw = c.offsetWidth, ch = c.offsetHeight;
       if (p.type === 'alternatives') {
         const key = 'alt' + W + H + cw + ch + B.bottom;
         if (p.last !== key) { c.style.left = Math.max(8, (W - cw) / 2) + 'px'; c.style.top = Math.max(B.top, B.top + (B.bottom - B.top - ch) / 2) + 'px'; p.last = key; }
         p.line.style.display = 'none'; continue;
       }
-      const a = cb.project && p.anchorId ? cb.project(p.anchorId) : null;
-      if (!a) { p.line.style.display = 'none'; continue; }
-      const clampX = (v) => Math.min(Math.max(B.left, v), Math.max(B.left, B.right - cw));
-      const clampY = (v) => Math.min(Math.max(B.top, v), Math.max(B.top, B.bottom - ch));
-      const cands = [];
-      // primero, fuera de la escena: sobre los paneles laterales (la escena queda visible)
-      const zones = (B.zones || []).filter((z) => z.right - z.left >= Math.min(cw, 300)).sort((z1, z2) => Math.abs((z1.left + z1.right) / 2 - a.x) - Math.abs((z2.left + z2.right) / 2 - a.x));
-      for (const z of zones) {
-        const x = Math.min(z.left, Math.max(B.left, z.right - cw)) === z.left ? z.left : z.right - cw;
-        for (const y of [a.y - ch / 2, B.top, B.bottom - ch, B.top + 200]) cands.push([x, y]);
-      }
-      // luego, en las esquinas libres de la escena (primero las de abajo: tapan la zona decorativa de la placa)
-      const corners = [[B.left, B.bottom - ch], [B.right - cw, B.bottom - ch], [B.left, B.top], [B.right - cw, B.top]]
-        .sort((c1, c2) => (c2[1] > B.top ? 1 : 0) - (c1[1] > B.top ? 1 : 0) || Math.abs(c1[0] + cw / 2 - a.x) - Math.abs(c2[0] + cw / 2 - a.x));
-      cands.push(...corners);
-      for (const gap of [34, 120, 220]) {
-        cands.push([a.x + 40, a.y - ch - gap + 6], [a.x + 40, a.y + gap], [a.x - 40 - cw, a.y - ch - gap + 6], [a.x - 40 - cw, a.y + gap]);
-      }
-      let left = 0, top = 0, found = false;
-      for (const [cx, cy] of cands) {
-        const l = clampX(cx), t = clampY(cy);
-        const coversAnchor = a.x > l - 14 && a.x < l + cw + 14 && a.y > t - 14 && a.y < t + ch + 14;
-        if (!coversAnchor && !placed.some((r) => l < r.x + r.w + 6 && l + cw + 6 > r.x && t < r.y + r.h + 6 && t + ch + 6 > r.y)) { left = l; top = t; found = true; break; }
-      }
-      if (p.drag) { left = p.drag.x; top = p.drag.y; found = true; }
-      if (!found) { left = clampX(a.x + 40 + (idx % 4) * 24); top = clampY(a.y - ch - 28 - (idx % 4) * 24); }
-      idx++;
-      placed.push({ x: left, y: top, w: cw, h: ch });
-      const key = `${Math.round(left)}|${Math.round(top)}|${Math.round(a.x)}|${Math.round(a.y)}|${a.visible}`;
-      if (key === p.last) continue;
-      p.last = key;
-      c.style.left = left + 'px'; c.style.top = top + 'px';
-      const nx = Math.min(Math.max(a.x, left), left + cw), ny = Math.min(Math.max(a.y, top), top + ch);
-      const ln = p.line.firstChild, dot = p.line.lastChild;
-      ln.setAttribute('x1', nx); ln.setAttribute('y1', ny); ln.setAttribute('x2', a.x); ln.setAttribute('y2', a.y);
-      dot.setAttribute('cx', a.x); dot.setAttribute('cy', a.y);
-      p.line.style.display = a.visible ? '' : 'none';
+      idx++; placed.push(0);
     }
   }
-  return { show, close, closeAll, closeUnpinned, closeType, update, has: (key) => [...items.values()].some((p) => p.key === key), get count() { return items.size; } };
+  function railInfo() {
+    if (rail.hidden || layer.clientWidth < 720) return null;
+    return { side: cb.railSide ? cb.railSide() : 'right', width: rail.classList.contains('collapsed') ? 150 : Math.min(340, Math.max(260, ((cb.bounds ? cb.bounds().right - cb.bounds().left : 700)) * 0.34)) };
+  }
+  return { railInfo, hasRail: () => !rail.hidden && rail.classList.contains('m-open'), show, close, closeAll, closeUnpinned, closeType, update, has: (key) => [...items.values()].some((p) => p.key === key), get count() { return items.size; } };
 }

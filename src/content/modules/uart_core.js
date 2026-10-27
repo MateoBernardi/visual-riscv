@@ -9,7 +9,9 @@ export default {
   module: 'uart_core',
   file: F,
   instance: 'u_uart',
-  parent: 'top_riscv',
+  parent: null,
+  within: 'top_riscv',
+  instancePath: 'u_uart',
   blockIds: ['uart'],
   title: 'uart_core',
   stage: null,
@@ -22,6 +24,7 @@ export default {
       <p>Una buena práctica de diseño es separar capas: la UART no sabe nada del procesador y la debug unit no sabe nada de bits seriales. La frontera entre ambas es una interfaz de <b>bytes con handshake</b>: <code>empty</code>/<code>read</code> del lado de recepción y <code>full</code>/<code>write</code> del lado de transmisión.</p>`,
     inThisProject: `
       <p>${L('uart_core')} instancia cinco módulos: ${L('BAUD_GEN')} (genera <code>tick</code>), ${L('RX')} (deserializa), ${L('RX_FIFO')} (cola de recepción), ${L('TX_FIFO')} (cola de transmisión) y ${L('TX')} (serializa). Los dos FIFOs son el mismo módulo <code>fifo</code> instanciado dos veces, con <code>PTR_LEN = 2</code> (4 entradas de 8 bits).</p>
+      <p><b>Sincronizador de RX.</b> Antes de llegar a este módulo, la línea <code>i_rx</code> pasa por un <code>sync_2ff</code> del top (<code>u_rx_sync</code>, el mismo módulo que usa <code>reset_gen</code> para el botón): la UART recibe <code>rx_sync</code>, ya alineada con <code>clk</code>.</p>
       <p><b>Baud rate.</b> El top le pasa <code>CLK_FREQ = SYS_FREQ</code> = 50 MHz, no 100 MHz. Así <code>MODULUS = 50 000 000 / (19 200 &times; 16) = 162</code> (el README de <code>uart/</code> dice 325, que es el valor para 100 MHz; el RTL real usa 162).</p>
       <p><b>Recepción.</b> Cuando <code>RX</code> termina un byte válido emite <code>rx_done</code>, que escribe <code>rx_data_out</code> en <code>RX_FIFO</code>. La debug unit mira <code>o_rx_empty</code>, y con <code>i_read_uart</code> saca el byte de la cabeza (<code>o_data_to_read</code>).</p>
       <p><b>Transmisión.</b> La debug unit escribe con <code>i_write_uart</code>/<code>i_data_to_write</code> en <code>TX_FIFO</code>. El FIFO <b>se vacía solo</b>: <code>tx_not_empty = ~tx_empty</code> alimenta <code>i_tx_ready</code> de <code>TX</code>, y cuando <code>TX</code> termina un byte emite <code>tx_done</code>, que a su vez es el <code>i_read_fifo</code> del FIFO (hace el pop). Así los bytes encolados salen uno detrás de otro, sin hueco entre tramas. <code>o_tx_full</code> avisa a la debug unit cuándo debe esperar.</p>

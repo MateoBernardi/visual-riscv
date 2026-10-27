@@ -1,4 +1,5 @@
 import { h, clear, hex32, STAGE_COLORS, debounce } from './dom.js';
+import { highlightLine } from './debug/asmEditor.js';
 
 const LH = 21; // alto de línea en px (debe coincidir con CSS --lh)
 
@@ -16,7 +17,8 @@ export function createEditor(root, callbacks = {}) {
   const ta = h('textarea', { class: 'ed-ta', spellcheck: 'false', wrap: 'off', autocapitalize: 'off', autocomplete: 'off', 'aria-label': 'Código ensamblador RV32I' });
   const gutter = h('div', { class: 'ed-gutter' });
   const hl = h('div', { class: 'ed-hl' });
-  const body = h('div', { class: 'ed-body' }, h('div', { class: 'ed-gutter-wrap' }, gutter), h('div', { class: 'ed-main' }, hl, ta));
+  const pre = h('div', { class: 'ed-pre', 'aria-hidden': 'true' }); // texto coloreado (mismo tokenizador que el editor de Debug) detrás del textarea
+  const body = h('div', { class: 'ed-body' }, h('div', { class: 'ed-gutter-wrap' }, gutter), h('div', { class: 'ed-main' }, pre, hl, ta));
   const status = h('div', { class: 'ed-status' }, 'Se ensambla solo mientras escribís');
   const listWrap = h('div', { class: 'ed-listing' });
   const tabCode = h('button', { class: 'tab active', onclick: () => setTab('code') }, 'Código');
@@ -43,7 +45,14 @@ export function createEditor(root, callbacks = {}) {
       frag.append(d);
     }
     clear(gutter).append(frag);
+    renderPre();
     renderHl();
+  }
+  function renderPre() {
+    const f = document.createDocumentFragment();
+    for (const ln of ta.value.split('\n')) f.append(h('div', { class: 'ed-ln', html: highlightLine(ln) || '&#8203;' }));
+    clear(pre).append(f);
+    pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft;
   }
   function renderHl() {
     const n = Math.max(1, ta.value.split('\n').length);
@@ -71,6 +80,7 @@ export function createEditor(root, callbacks = {}) {
   function syncScroll() {
     gutter.style.transform = `translateY(${-ta.scrollTop}px)`;
     hl.style.transform = `translateY(${-ta.scrollTop}px)`;
+    pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft;
   }
   function renderListing() {
     clear(listWrap);

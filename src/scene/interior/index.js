@@ -79,7 +79,7 @@ export function createInterior({ camera, getSize }) {
     scene.background = new THREE.Color(th.bg);
     hemi.color.set(th.hemiSky); hemi.groundColor.set(th.hemiGround); hemi.intensity = th.hemiI; sun.intensity = th.dirI;
     if (floorMat) paintFloor();
-    if (shimMat) shimMat.opacity = t === 'dark' ? 0.16 : 0.1;
+    if (shimMat) shimMat.opacity = t === 'dark' ? 0.06 : 0.07;
   }
   function paintFloor() {
     const c = DIE[theme] || DIE.light;
@@ -134,7 +134,7 @@ export function createInterior({ camera, getSize }) {
       gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
       sx.fillStyle = gr; sx.fillRect(0, 0, 256, 4);
       shimTex = new THREE.CanvasTexture(sc); shimTex.wrapS = shimTex.wrapT = THREE.RepeatWrapping; shimTex.repeat.set(0.45, 1); shimTex.center.set(0.5, 0.5); shimTex.rotation = 0.6;
-      const shim = new THREE.Mesh(new THREE.PlaneGeometry(die.w - 0.3, die.d - 0.3), new THREE.MeshBasicMaterial({ map: shimTex, transparent: true, opacity: theme === 'dark' ? 0.16 : 0.1, depthWrite: false, blending: THREE.AdditiveBlending, color: stageColor }));
+      const shim = new THREE.Mesh(new THREE.PlaneGeometry(die.w - 0.3, die.d - 0.3), new THREE.MeshBasicMaterial({ map: shimTex, transparent: true, opacity: theme === 'dark' ? 0.06 : 0.07, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffffff' }));
       shim.rotation.x = -Math.PI / 2; shim.position.set(top.position.x, 0.012, top.position.z); shim.renderOrder = 1; root.add(shim); shimMat = shim.material;
     }
     // borde de color de etapa
@@ -162,7 +162,7 @@ export function createInterior({ camera, getSize }) {
       lab.e.dataset.t = MAJOR.has(def.kind) ? '1' : def.live ? '2' : '3'; lab.e.style.translate = '0 55%';
       const t = el('ip-t', dec(def.label || def.id)); lab.e.append(t);
       { const fp = topFootprint({ ...def, ...lp }); const adder = def.kind === 'adder' || def.kind === 'cmp';
-        decals.add(dec(def.label || def.id), lp.x, lp.z + fp.d * (adder ? -0.3 : 0.3), lp.h + 0.1, fp.w * 0.9, fp.d * 0.3); }
+        lab.o.userData.decalW = decals.add(dec(def.label || def.id), lp.x, lp.z + fp.d * (adder ? -0.3 : 0.3), lp.h + 0.1, fp.w * 0.9, fp.d * 0.3); }
       const m = el('ip-m'); const wEl = span('ip-w', [def.kind === 'regArray' || def.kind === 'mem' ? `${def.depth || '?'}×${def.width || '?'}` : fmtW(def.width)].filter(Boolean).join('')); const vEl = span('ip-v', '');
       m.append(wEl, vEl); lab.e.append(m);
       if (!wEl.textContent) wEl.style.display = 'none';

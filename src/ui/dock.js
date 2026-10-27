@@ -19,7 +19,7 @@ export function createDock(root, cb = {}) {
   const collapse = h('button', { class: 'icon-btn bd-collapse', title: 'Expandir o contraer', 'aria-label': 'Expandir o contraer el dock', onclick: (e) => { e.stopPropagation(); toggle(); } }, '⌃');
   const tabsEl = h('div', { class: 'bd-tabs', role: 'tablist' }, DOCK_TABS.map(([id, label]) => {
     const badge = h('i', { class: 'bd-badge', hidden: true });
-    const b = h('button', { class: 'bd-tab', role: 'tab', 'data-tab': id, onclick: () => { if (box.classList.contains('collapsed') || tab !== id) setTab(id, { open: true }); else close(); } }, label, badge);
+    const b = h('button', { class: 'bd-tab', role: 'tab', 'data-tab': id, title: ({ cycles: 'Diagrama de ciclos: qué instrucción ocupa cada etapa en cada ciclo', regs: 'Registros x0..x31 y su cambio en el último ciclo', mem: 'Memoria de datos (dmem)', verify: 'Esperado vs. obtenido del ejemplo cargado' })[id] || null, onclick: () => { if (box.classList.contains('collapsed') || tab !== id) setTab(id, { open: true }); else close(); } }, label, badge);
     btns[id] = b; badges[id] = badge;
     return b;
   }));

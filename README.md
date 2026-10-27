@@ -14,11 +14,12 @@ JavaScript reproduce el comportamiento del RTL y la escena (three.js) muestra c�
 - **Simulador fiel al RTL** (`src/sim/`): stalls load-use (incluido el "stall falso" del RTL), forwarding EX/MEM y MEM/WB,
   bypass WB→ID del regfile, flush por salto/jump, halt con `ecall`/`ebreak`. Se puede volver atrás ciclo a ciclo.
 - **Dos representaciones, para no confundirse**: la *Vista general* es un diagrama simplificado del datapath (bloques
-  agrupados por etapa; no es un módulo de Verilog) y `top_riscv` es el módulo top real que se sintetiza en la FPGA (MMCM,
-  reset, UART, debug unit y el CPU). Desde la vista general, el botón "Ver jerarquía real (top_riscv)" entra al top.
+  agrupados por etapa; no es un módulo de Verilog) es la única raíz: de ahí cuelga cada módulo (incluido el bloque "CLK/RST" con
+  el MMCM y el reset). Las migas dicen dónde vive cada uno en el RTL real ("en el RTL: top_riscv › u_cpu › u_alu"), y el botón
+  "¿Qué es esta vista?" explica `top_riscv` y `riscv_pipeline`.
 - **Zoom por dentro de cada módulo**: un clic en un bloque abre el inspector (explicación desde cero, cómo lo resuelve este
   RTL, por qué esa elección, alternativas, señales en vivo, links a GitHub) y entra a su interior. Las migas
-  ("Vista general › top_riscv › u_cpu › u_alu", con el tipo de cada nivel) y `Esc` suben un nivel; los submódulos se
+  ("Vista general › alu_tp1", con el tipo de cada nivel) y `Esc` suben un nivel; los submódulos se
   atraviesan con clic. Hay FSMs con grafo, y un simulador de bytes para la UART.
 - **Hazards visibles**: triángulo de aviso en la etapa afectada ("RAW x5", "load-use x2", "control: bne tomado", "stall
   falso"), el hardware que lo resuelve se ilumina y aparece "Por qué funciona". Los bloques muestran chips de estado solo
@@ -41,13 +42,13 @@ JavaScript reproduce el comportamiento del RTL y la escena (three.js) muestra c�
 | --- | --- |
 | ![Verificación](docs/screenshots/02-verificacion.png) | ![Registros](docs/screenshots/03-registros.png) |
 
-| Inspector de un módulo | Por dentro de la ALU |
+| Inspector de un módulo (el riel de explicación pasa al lado libre) | Por dentro de la ALU |
 | --- | --- |
 | ![Inspector](docs/screenshots/04-inspector-hazard.png) | ![ALU](docs/screenshots/05-interior-alu.png) |
 
-| Interior de riscv_pipeline y migas | Alternativas de hardware |
+| Zoom cercano (títulos decal + valores en vivo) | Alternativas de hardware |
 | --- | --- |
-| ![Pipeline](docs/screenshots/06-interior-pipeline-migas.png) | ![Alternativas](docs/screenshots/07-alternativas.png) |
+| ![Cerca](docs/screenshots/06-interior-cerca-oscuro.png) | ![Alternativas](docs/screenshots/07-alternativas.png) |
 
 | LEDs | Inicio |
 | --- | --- |
@@ -57,9 +58,17 @@ JavaScript reproduce el comportamiento del RTL y la escena (three.js) muestra c�
 | --- | --- |
 | ![Lección](docs/screenshots/10-leccion.png) | ![Construir](docs/screenshots/11-construir.png) |
 
-| Salto tomado, tema oscuro | Móvil (390x844) |
+| Salto tomado, tema oscuro | Móvil (hoja inferior de explicación) |
 | --- | --- |
 | ![Flush](docs/screenshots/12-branch-flush-oscuro.png) | ![Móvil](docs/screenshots/13-movil.png) |
+
+| Debug: carga por UART (comando L) a mitad de camino | Vista general: "¿Qué es esta vista?" |
+| --- | --- |
+| ![Debug](docs/screenshots/14-debug-carga.png) | ![Vista general](docs/screenshots/15-vista-general-inspector.png) |
+
+| Bloque CLK/RST y migas con la ruta real del RTL | Editor con resaltado de sintaxis |
+| --- | --- |
+| ![Reloj y reset](docs/screenshots/16-reloj-reset-migas.png) | ![Editor](docs/screenshots/17-editor-resaltado.png) |
 
 ## Controles
 
@@ -67,6 +76,13 @@ JavaScript reproduce el comportamiento del RTL y la escena (three.js) muestra c�
 - **Simulador**: editor a la izquierda (pestaña lateral), inspector a la derecha, dock de ejecución abajo.
 - **Paso / Run / Atrás / Reset**, velocidad, *Explicación*, *Pausar en eventos*, *Forwarding* (apagarlo es una alternativa
   didáctica) y *Cargar como en el hardware*.
+
+## Rendimiento (`?perf`)
+
+Con `?perf` en la URL aparece un panel con fps reales (cuadros renderizados), ms de CPU por cuadro, draw calls y triángulos. La escena
+renderiza solo cuando algo cambia; las animaciones ambientales (cables activos, polvo, brillo de silicio) van a 30 fps. Las etiquetas
+DOM no leen layout en el bucle (tamaños cacheados, nivel de detalle por zoom, solo se escribe lo que cambia). Draw calls / triángulos
+antes → después: placa 239 / 37k → 104 / 26k; ALU 67 / 15.7k → 25 / 9.2k.
 
 ## Uso
 

@@ -7,8 +7,8 @@ import { RTL_INDEX, fileEntry, moduleInfo, resolveSymbol, hasSymbol } from '../s
 import { buildIndex, DEFAULT_RTL_ROOT } from '../scripts/rtl-index.mjs';
 
 const BLOCK_IDS = ['pc', 'imem', 'ifid', 'control', 'regfile', 'immgen', 'idex', 'fwdMuxA', 'fwdMuxB', 'aluSrcMux', 'alu', 'branch',
-  'exmem', 'dmem', 'wbMux', 'memwb', 'hazard', 'forward', 'flush', 'debug', 'uart'];
-const ROOT_ID = 'top_riscv';
+  'exmem', 'dmem', 'wbMux', 'memwb', 'hazard', 'forward', 'flush', 'debug', 'uart', 'clkrst'];
+const TOP_FILES = { top_riscv: 'top/top_riscv.v', riscv_pipeline: 'pipeline/riscv_pipeline.v' };
 const views = Object.values(VIEWS);
 
 function fail(errors) {
@@ -29,7 +29,19 @@ function checkView(v) {
   }
   if (v.id !== v.module && !v.pseudo && v.module !== 'riscv_pipeline') tag('id', `para un módulo real el id debería ser el nombre del módulo ("${v.module}"), es "${v.id}"`);
   if (v.parent != null && !VIEWS[v.parent]) tag('parent', `"${v.parent}" no es una vista registrada`);
-  if (v.parent == null && v.id !== ROOT_ID) tag('parent', `sólo "${ROOT_ID}" puede tener parent null`);
+  if (v.parent == null) {
+    // vista raíz (cuelga de la Vista general): dice en qué módulo del RTL vive y por qué cadena de instancias se llega
+    if (!TOP_FILES[v.within]) tag('within', `una vista con parent null necesita within = ${Object.keys(TOP_FILES).join(' | ')} (es "${v.within}")`);
+    else if (!v.instancePath) tag('instancePath', 'falta instancePath (p. ej. "u_cpu.u_alu")');
+    else {
+      const segs = v.instancePath.split('.');
+      const chain = v.within === 'riscv_pipeline' ? [['top/top_riscv.v', segs[0], 'u_cpu'], ...segs.slice(1).map((x) => [TOP_FILES.riscv_pipeline, x])] : segs.map((x) => [TOP_FILES.top_riscv, x]);
+      if (v.within === 'riscv_pipeline' && segs[0] !== 'u_cpu') tag('instancePath', `debe empezar con u_cpu (es "${segs[0]}")`);
+      for (const [f, name] of chain) if (!resolveSymbol(f, `inst:${name}`)) tag('instancePath', `"${name}" no es una instancia en ${f}`);
+      const last = segs[segs.length - 1];
+      if (v.instance && v.instance !== last) tag('instancePath', `termina en "${last}" pero instance es "${v.instance}"`);
+    }
+  } else if (v.within && !TOP_FILES[v.within]) tag('within', `"${v.within}" no es un módulo raíz del índice`);
 
   // ports
   const portNames = new Set();
@@ -52,9 +64,10 @@ function checkView(v) {
     if (partIds.has(p.id)) tag(`parts[${p.id}]`, 'id duplicado');
     partIds.add(p.id);
     if (p.symbol != null) {
+      const pf = p.file || file;
       if (p.kind === 'submodule') {
-        if (!resolveSymbol(file, `inst:${p.symbol}`)) tag(`parts[${p.id}].symbol`, `"${p.symbol}" (submodule) no es una instancia en ${file}`);
-      } else if (!hasSymbol(file, p.symbol)) {
+        if (!resolveSymbol(pf, `inst:${p.symbol}`)) tag(`parts[${p.id}].symbol`, `"${p.symbol}" (submodule) no es una instancia en ${pf}`);
+      } else if (!hasSymbol(pf, p.symbol)) {
         tag(`parts[${p.id}].symbol`, `"${p.symbol}" no existe en ${file} (probá con el nombre exacto del reg/wire/assign/instancia/localparam)`);
       }
     } else if (['reg', 'regArray', 'mem', 'submodule', 'ff'].includes(p.kind)) {
@@ -121,11 +134,22 @@ describe('rtl-index: vistas vs RTL', () => {
     fail(e);
   });
 
-  it.skipIf(views.length === 0)(`el breadcrumb de cada vista empieza en "${ROOT_ID}"`, () => {
+  it.skipIf(views.length === 0)('el breadcrumb de cada vista termina en una raíz (parent null) con within', () => {
     const e = [];
     for (const v of views) {
       const bc = breadcrumb(v.id);
-      if (bc[0] !== ROOT_ID) e.push(`[vista "${v.id}"] breadcrumb = ${bc.join(' > ')}: no llega a "${ROOT_ID}" (revisar la cadena de parent)`);
+      const root = VIEWS[bc[0]];
+      if (!root || root.parent != null || !TOP_FILES[root.within]) e.push(`[vista "${v.id}"] breadcrumb = ${bc.join(' > ')}: la raíz "${bc[0]}" no tiene parent null + within (revisar la cadena de parent)`);
+      if (bc.length > 8) e.push(`[vista "${v.id}"] cadena demasiado larga (¿ciclo de parent?)`);
+    }
+    fail(e);
+  });
+  it.skipIf(views.length === 0)('toda vista hija es alcanzable por un drill de su padre', () => {
+    const e = [];
+    for (const v of views) {
+      if (v.parent == null) continue;
+      const par = VIEWS[v.parent];
+      if (par && !(par.parts || []).some((p) => p.drill === v.id)) e.push(`[vista "${v.id}"] el padre "${v.parent}" no tiene ninguna parte con drill: '${v.id}'`);
     }
     fail(e);
   });

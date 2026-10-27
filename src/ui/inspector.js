@@ -1,6 +1,7 @@
 import { h, clear, getPath, fmtValue, STAGE_COLORS } from './dom.js';
 import { githubUrl, fileUrl, resolveSymbol } from '../content/repo.js';
-import { VIEWS, breadcrumb } from '../content/modules/index.js';
+import { VIEWS, breadcrumb, rtlPath } from '../content/modules/index.js';
+import { OVERVIEW } from '../content/overview.js';
 import { createFsmGraph } from './fsmGraph.js';
 import { simulateByte, frameBits, UART_STATES } from '../sim/uart.js';
 import { describeValue, meaningOf, isControlName } from './signalMeaning.js';
@@ -272,7 +273,8 @@ export function createInspector(root, cb = {}) {
     let link = null;
     if (symbol) {
       const sym = item.kind === 'submodule' ? `inst:${symbol}` : focus.type === 'port' ? `port:${symbol}` : symbol;
-      if (resolveSymbol(view.file, sym)) link = githubUrl(view.file, sym);
+      const lf = item.file || view.file;
+      if (resolveSymbol(lf, sym)) link = githubUrl(lf, sym);
       else if (parentFile && resolveSymbol(parentFile, symbol)) link = githubUrl(parentFile, symbol);
     }
     const livePath = item.live;
@@ -294,8 +296,19 @@ export function createInspector(root, cb = {}) {
   // ---------- render ----------
   function renderEmpty() {
     clear(box);
-    box.append(h('div', { class: 'panel-head' }, h('div', { class: 'panel-title' }, h('span', { class: 'eyebrow' }, 'Inspector'), h('h2', {}, 'Elegí un bloque'))),
-      h('p', { class: 'muted pad' }, 'Hacé clic en cualquier bloque de la escena 3D para ver qué hace, cómo está hecho en este RTL y qué entra y sale en este ciclo.'));
+    box.append(h('div', { class: 'panel-head' }, h('div', { class: 'panel-title' }, h('span', { class: 'eyebrow' }, 'Inspector · Vista general'), h('h2', {}, '¿Qué es esta vista?'))),
+      h('div', { class: 'insp-body' },
+        h('div', { class: 'prose', html: OVERVIEW.intro }),
+        h('p', { class: 'muted' }, 'Hacé clic en cualquier bloque de la escena 3D para ver qué hace, cómo está hecho en este RTL y qué entra y sale en este ciclo.'),
+        ...OVERVIEW.sections.map((o) => {
+          const ex = o.explain || {};
+          const chips = h('div', { class: 'chips gh-chips' }, ext(githubUrl(o.file, `module:${o.module}`), `${o.file} · ${o.module} ${GH}`),
+            ...o.refs.filter((r) => resolveSymbol(o.file, r.sym)).map((r) => ext(githubUrl(o.file, r.sym), `${r.label} ${GH}`)));
+          return section(o.title, [h('p', { class: 'muted' }, o.lead),
+            ex.firstPrinciples ? h('div', { class: 'prose', html: ex.firstPrinciples }) : null,
+            ex.inThisProject ? h('div', { class: 'prose', html: ex.inThisProject }) : null,
+            ex.whyThisChoice ? h('div', { class: 'prose', html: ex.whyThisChoice }) : null, chips]);
+        })));
   }
 
   function render(d) {
@@ -307,18 +320,19 @@ export function createInspector(root, cb = {}) {
     const title = (view && view.title) || (info && info.title) || d.blockId;
     const stage = (view && view.stage) || (info && info.stage);
     const crumbIds = view ? breadcrumb(view.id) : [];
-    const crumb = crumbIds.length ? crumbIds.map((id) => (VIEWS[id] && VIEWS[id].title) || id).join(' › ') : null;
+    const crumb = crumbIds.length ? ['Vista general', ...crumbIds.map((id) => (VIEWS[id] && VIEWS[id].title) || id)].join(' › ') : null;
+    const rpath = view ? rtlPath(view.id) : [];
 
     const ghUrl = view ? githubUrl(view.file, view.pseudo ? ((view.refs && view.refs[0] && view.refs[0].sym) || undefined) : `module:${view.module}`) : (info && info.rtlFile ? fileUrl(info.rtlFile) : null);
     box.append(h('div', { class: 'panel-head insp-head' },
       h('div', { class: 'panel-title' }, h('span', { class: 'eyebrow' }, view ? (view.kind === 'fsm' ? 'Máquina de estados' : 'Módulo') : 'Inspector'), h('h2', {}, title)),
-      stage ? h('span', { class: 'chip stage-chip', style: { background: STAGE_COLORS[stage] } }, stage) : null,
+      stage ? h('span', { class: 'chip stage-chip', style: STAGE_COLORS[stage] ? { background: STAGE_COLORS[stage] } : { background: 'var(--panel2)', color: 'var(--text2)', border: '1px solid var(--line2)' } }, stage) : null,
       h('button', { class: 'icon-btn', title: 'Cerrar', onclick: () => cb.onClose && cb.onClose() }, '✕')));
     const acts = h('div', { class: 'insp-acts' });
     if (view && cb.onEnter && !d.inside) acts.append(h('button', { class: 'btn small primary', type: 'button', onclick: () => cb.onEnter(view.id) }, 'Entrar ⤵'));
     if (ghUrl) acts.append(ext(ghUrl, 'Ver en GitHub ↗', 'btn small ghost'));
     if (cb.onAlternatives && d.blockId && alt && !view) acts.append(h('button', { class: 'btn small accent', type: 'button', onclick: () => cb.onAlternatives(d.blockId) }, 'Otras opciones de hardware'));
-    box.append(h('div', { class: 'insp-sub' }, crumb ? h('div', { class: 'insp-crumb' }, crumb) : null, acts));
+    box.append(h('div', { class: 'insp-sub' }, crumb ? h('div', { class: 'insp-crumb' }, crumb) : null, rpath.length ? h('div', { class: 'insp-rtl' }, 'en el RTL: ', h('code', {}, rpath.join(' › '))) : null, acts));
 
     const focusCard = buildFocus(view, d.focus, ctx);
     if (focusCard) box.append(focusCard);

@@ -374,12 +374,34 @@ export function createScene(container, { theme = 'light' } = {}) {
   const perfDetail = () => { const o = {}; (view ? interior.scene : scene).traverse((c) => { if (c.isMesh && c.visible && c.material.visible !== false) { const g = c.geometry, k = g.type + (c.isInstancedMesh ? '*' : ''); const e = o[k] || (o[k] = { n: 0, tris: 0 }); e.n++; e.tris += Math.round((g.index ? g.index.count : g.attributes.position.count) / 3); } }); return o; };
   const perfInfo = () => { const i = renderer.info; return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, programs: i.programs ? i.programs.length : 0, fps: perfStat.fps, cpuMs: +perfStat.cpu.toFixed(2), parts: breakdown() }; };
 
+  // ---- intro (Inicio): la cámara recorre suavemente la placa hasta que el usuario toca la escena ----
+  let intro = false, introT0 = 0;
+  const introDir = new THREE.Vector3(), introOff = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  function setIntro(on) {
+    if (on === intro || view) return;
+    intro = on;
+    if (on) { introT0 = performance.now(); rig.cancelTween(); rig.controls.enabled = false; }
+    else { rig.controls.enabled = true; rig.resetView(false); }
+  }
+  function stepIntro(now) {
+    const hp = homePose(), t = (now - introT0) / 1000;
+    const k = Math.min(1, t / 2.5), e = 1 - Math.pow(1 - k, 3); // entrada suave desde una vista más cercana y rotada
+    const yaw = (0.45 * (1 - e) + 0.1 * Math.sin(t * 0.22)), zoom = 1.12 - 0.12 * e + 0.02 * Math.sin(t * 0.17);
+    introDir.copy(hp.dir).applyAxisAngle(Y, yaw);
+    introOff.copy(introDir).multiplyScalar(hp.dist * zoom);
+    rig.controls.target.set(...DEFAULT_TARGET);
+    camera.position.copy(rig.controls.target).add(introOff);
+    camera.lookAt(rig.controls.target);
+  }
+  dom.addEventListener('pointerdown', () => { if (intro) setIntro(false); });
+
   // ---- bucle de render bajo demanda ----
   function frame(now) {
     raf = requestAnimationFrame(frame);
     if (document.hidden || disposed) { last = now; return; }
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const pnow = performance.now();
+    if (intro && !view) stepIntro(pnow);
     let active = rig.update(dt, pnow);
     if (stepInsets(dt)) active = true;
     if (packets.update(pnow)) active = true;
@@ -387,6 +409,7 @@ export function createScene(container, { theme = 'light' } = {}) {
     if (wires.update(pnow)) amb = true;
     if (effects.update(pnow)) amb = true;
     if (ambientFx.update(pnow, view)) amb = true;
+    if (intro && !view) amb = true;
     if (view) {
       if (interior.update(pnow)) active = true;
       if (interior.ambient) amb = true;
@@ -470,7 +493,7 @@ export function createScene(container, { theme = 'light' } = {}) {
       if (x != null) t.set(x, 0, z);
       camera.position.copy(t).add(off); rig.controls.update(); invalidate();
     },
-    setViewInsets,
+    setViewInsets, setIntro,
     debugInfo() { return { cam: camera.position.toArray().map((v) => +v.toFixed(1)), target: rig.controls.target.toArray().map((v) => +v.toFixed(1)), insets, size: [container.clientWidth, container.clientHeight], view: camera.view && { ...camera.view } }; },
     onBlockClick(cb) { clickCb = cb; },
     onBlockHover(cb) { hoverCb = cb; },

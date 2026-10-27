@@ -246,6 +246,14 @@ export const BLOCK_INFO = {
       S('dmem', 'Palabras 54..85 del dump.', 'dmem'),
     ],
   },
+  clkrst: {
+    title: 'Reloj y reset', stage: 'Fuera del core',
+    summary: '<p>Lo que le da reloj y reset a todo el sistema: el <code>MMCM</code> que convierte los 100 MHz de la placa en 50 MHz (el reloj de toda la lógica), <code>reset_gen</code> (reset de power-on de 4 ciclos más el botón BTNC) y el sincronizador de la línea RX. El reset del sistema (<code>sys_reset</code>) llega a la UART y a la debug unit; el CPU recibe un reset aparte, <code>cpu_reset</code>, que arma la debug unit.</p>',
+    rtlFile: 'common/reset_gen.v',
+    signals: [
+      S('halted', 'El reset de CPU (RST) lo maneja la debug unit; este bloque solo genera sys_reset.', 'halted'),
+    ],
+  },
   uart: {
     title: 'UART', stage: 'Fuera del core',
     summary: '<p>Transmisor y receptor serie 8N1 a 19200 baudios, con generador de baud rate y FIFOs. Conecta la PC con la debug unit; cada byte de comando o dato viaja como un frame de 10 bits (start + 8 + stop).</p>',

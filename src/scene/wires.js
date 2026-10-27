@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BLOCKS, BASE_Y, WIRE_Y, THEME } from './layout.js';
 
 // from/to: IDs de bloque; fs/ts: lado del puerto (l r f k t); arc: altura del arco; via: puntos [x,z] intermedios
@@ -49,6 +50,7 @@ export const WIRE_DEFS = {
   'memwb-regfile': W('memwb', 't', 'regfile', 't', { arc: 8 }),
   'uart-debug': W('uart', 'r', 'debug', 'l'),
   'debug-uart': W('debug', 'l', 'uart', 'r'),
+  'clkrst-debug': W('clkrst', 'l', 'debug', 'r'),
   'debug-imem': W('debug', 'k', 'imem', 'f'),
   'debug-pc': W('debug', 'k', 'pc', 'f'),
 };
@@ -158,18 +160,21 @@ export function createWires() {
   root.name = 'wires';
   const wires = new Map();
   let theme = THEME.light;
+  const tubeGeos = [], glowGeos = [];
+  let vTube = 0, vGlow = 0;
+  const tmp = new THREE.Color(), tmpE = new THREE.Color();
 
   for (const [wid, d] of Object.entries(WIRE_DEFS)) {
     const curve = buildCurve(wid, d);
     const len = curve.getLength();
     const seg = Math.max(8, Math.ceil(len * 0.9));
-    const mat = new THREE.MeshStandardMaterial({ color: theme.wireIdle, transparent: true, opacity: theme.wireIdleOpacity, roughness: 0.5, emissive: '#000', emissiveIntensity: 0 });
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, seg, 0.1, 5, false), mat);
-    tube.userData.wireId = wid;
-    const glowMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false });
-    const glow = new THREE.Mesh(new THREE.TubeGeometry(curve, seg, 0.26, 5, false), glowMat);
-    glow.visible = false;
-    root.add(tube, glow);
+    const tg = new THREE.TubeGeometry(curve, seg, 0.1, 5, false);
+    const gg = new THREE.TubeGeometry(curve, seg, 0.26, 4, false);
+    const nt = tg.attributes.position.count, ng = gg.attributes.position.count;
+    tg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(nt * 4), 4));
+    tg.setAttribute('aEm', new THREE.BufferAttribute(new Float32Array(nt * 3), 3));
+    gg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(ng * 4), 4));
+    tubeGeos.push(tg); glowGeos.push(gg);
 
     const lab = document.createElement('div'); lab.className = 'wire-label'; lab.dataset.t = '2'; lab.style.display = 'none';
     const labelObj = new CSS2DObject(lab);
@@ -177,32 +182,65 @@ export function createWires() {
     labelObj.position.copy(curve.getPointAt(0.5)).add(new THREE.Vector3(0, 0.7, 0));
     root.add(labelObj);
 
-    wires.set(wid, { id: wid, def: d, curve, length: len, tube, glow, mat, glowMat, lab, labelObj, active: false, color: '#1aa3a1', phase: Math.random() * 6 });
+    wires.set(wid, { id: wid, def: d, curve, length: len, t0: vTube, tn: nt, g0: vGlow, gn: ng, lab, labelObj, active: false, color: '#1aa3a1', phase: Math.random() * 6 });
+    vTube += nt; vGlow += ng;
   }
+  // todos los cables en UN mesh (color + alfa + brillo por vértice) y todos los halos en otro: 2 draw calls en lugar de ~66
+  const tubeBig = mergeGeometries(tubeGeos), glowBig = mergeGeometries(glowGeos);
+  tubeGeos.forEach((g) => g.dispose()); glowGeos.forEach((g) => g.dispose());
+  const tubeCol = tubeBig.attributes.color, tubeEm = tubeBig.attributes.aEm, glowCol = glowBig.attributes.color;
+  tubeCol.setUsage(THREE.DynamicDrawUsage); tubeEm.setUsage(THREE.DynamicDrawUsage); glowCol.setUsage(THREE.DynamicDrawUsage);
+  const tubeMat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.5 });
+  tubeMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aEm; varying vec3 vEm;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvEm = aEm;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vEm;').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vEm;');
+  };
+  const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const tubeMesh = new THREE.Mesh(tubeBig, tubeMat), glowMesh = new THREE.Mesh(glowBig, glowMat);
+  tubeMesh.frustumCulled = glowMesh.frustumCulled = false;
+  root.add(tubeMesh, glowMesh);
+
+  function fill(attr, from, n, r, g, b, a) {
+    const arr = attr.array, k = attr.itemSize;
+    for (let i = from; i < from + n; i++) { arr[i * k] = r; arr[i * k + 1] = g; arr[i * k + 2] = b; if (k === 4) arr[i * k + 3] = a; }
+    attr.needsUpdate = true;
+  }
+  function paint(w) {
+    if (w.active) {
+      tmp.set(w.color); tmpE.copy(tmp).multiplyScalar(1.3);
+      fill(tubeCol, w.t0, w.tn, tmp.r, tmp.g, tmp.b, 1); fill(tubeEm, w.t0, w.tn, tmpE.r, tmpE.g, tmpE.b);
+      fill(glowCol, w.g0, w.gn, tmp.r, tmp.g, tmp.b, 0.25);
+    } else {
+      tmp.set(theme.wireIdle);
+      fill(tubeCol, w.t0, w.tn, tmp.r, tmp.g, tmp.b, theme.wireIdleOpacity); fill(tubeEm, w.t0, w.tn, 0, 0, 0);
+      fill(glowCol, w.g0, w.gn, 0, 0, 0, 0);
+    }
+  }
+  for (const w of wires.values()) paint(w);
 
   function setWire(id, { active = false, color = '#1aa3a1', label = null } = {}) {
     const w = wires.get(id); if (!w) return;
+    const changed = w.active !== !!active || w.color !== color;
     w.active = !!active; w.color = color;
-    if (active) {
-      w.mat.color.set(color); w.mat.emissive.set(color); w.mat.emissiveIntensity = 1.3; w.mat.opacity = 1;
-      w.glowMat.color.set(color); w.glow.visible = true;
-    } else {
-      w.mat.color.set(theme.wireIdle); w.mat.emissive.set('#000000'); w.mat.emissiveIntensity = 0; w.mat.opacity = theme.wireIdleOpacity;
-      w.glow.visible = false;
-    }
+    if (changed) paint(w);
     // CSS2DRenderer controla el display según object.visible: hay que ocultar el objeto, no solo el elemento
-    if (active && label) { w.lab.textContent = label; w.lab.style.setProperty('--c', color); w.labelObj.visible = true; }
-    else { w.lab.textContent = ''; w.labelObj.visible = false; }
+    if (active && label) { if (w.lab.textContent !== label) w.lab.textContent = label; w.lab.style.setProperty('--c', color); w.labelObj.visible = true; }
+    else { if (w.lab.textContent) w.lab.textContent = ''; w.labelObj.visible = false; }
   }
   function clearWires() { for (const id of wires.keys()) setWire(id, { active: false }); }
   function setTheme(t) {
     theme = THEME[t] || THEME.light;
-    for (const w of wires.values()) if (!w.active) { w.mat.color.set(theme.wireIdle); w.mat.opacity = theme.wireIdleOpacity; }
+    for (const w of wires.values()) if (!w.active) paint(w);
   }
-  // Pulso del brillo; devuelve true si hay cables activos (requiere render continuo).
+  // Pulso del brillo del halo; devuelve true si hay cables activos (animación ambiental).
   function update(nowMs) {
     let any = false;
-    for (const w of wires.values()) if (w.active) { any = true; w.glowMat.opacity = 0.22 + 0.1 * Math.sin(nowMs / 260 + w.phase); }
+    for (const w of wires.values()) if (w.active) {
+      any = true;
+      const a = 0.22 + 0.1 * Math.sin(nowMs / 260 + w.phase), arr = glowCol.array;
+      for (let i = w.g0; i < w.g0 + w.gn; i++) arr[i * 4 + 3] = a;
+    }
+    if (any) glowCol.needsUpdate = true;
     return any;
   }
   return { root, wires, setWire, clearWires, setTheme, update, getCurve: (id) => wires.get(id)?.curve };

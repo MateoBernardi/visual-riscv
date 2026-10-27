@@ -73,6 +73,15 @@ export class LabelRenderer {
       if (el.className !== st.cn) { st.cn = el.className; st.prio = priority(el.classList); }
       const t = el.dataset.t; st.tier = t === undefined ? 0 : +t;
       if (st.tier > lod && st.prio < HOT) return; // oculta por nivel de detalle (no entra a la pasada de colisión)
+      // el título "decal" pegado a la parte ya se lee cuando su texto mide >= ~64 px: entonces la etiqueta DOM no repite el título
+      const dw = o.userData.decalW;
+      if (dw) {
+        v.setFromMatrixPosition(o.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
+        const nt = (dw * H * 0.5 * camera.projectionMatrix.elements[5]) / Math.max(0.01, -v.z) > 64;
+        if (nt !== !!st.nt) { st.nt = nt; el.toggleAttribute('data-nt', nt); st.dirty = true; }
+        if (nt && lod < 2 && st.prio < HOT) return;
+        v.setFromMatrixPosition(o.matrixWorld).applyMatrix4(this._vp);
+      }
       const tr = el.style.translate;
       if (tr !== st.tr) { st.tr = tr; const m = tr ? tr.split(/\s+/) : []; st.tx = m[0] ? parseFloat(m[0]) / 100 : 0; st.ty = m[1] ? parseFloat(m[1]) / 100 : 0; if (isNaN(st.tx)) st.tx = 0; if (isNaN(st.ty)) st.ty = 0; }
       st.o = o; st.sx = (v.x * 0.5 + 0.5) * W; st.sy = (-v.y * 0.5 + 0.5) * H; st.depth = v.z; st.el = el;
