@@ -18,19 +18,16 @@ export default {
   kind: 'struct',
   explain: {
     firstPrinciples: `
-      <p>Un circuito digital recién energizado tiene flip-flops con valores arbitrarios: la FSM podría arrancar en cualquier estado. Hace falta una señal de <b>reset</b> que, durante unos ciclos, fuerce todo a un estado conocido. Dos fuentes naturales: (1) el <b>power-on</b>, que no depende de nadie, y (2) un <b>botón</b> para reiniciar a mano.</p>
-      <p>El botón plantea un problema: lo aprieta una persona, en cualquier instante, sin relación con el reloj. Si su flanco cae justo cuando un flip-flop está capturando, ese flip-flop puede quedar <i>metaestable</i> (ver <code>sync_2ff</code>) y el reset llegaría a unas partes del diseño en un ciclo y a otras en el siguiente. Por eso el botón se <b>sincroniza</b> antes de usarlo y se distribuye ya alineado con el reloj.</p>
-      <p>Para el power-on, las FPGAs ofrecen algo cómodo: los flip-flops pueden tener un valor inicial que se carga al configurar el chip (el bitstream lo fija). Un registro que arranca en unos y va metiendo ceros dura exactamente N ciclos en alto: es un reset de duración conocida sin botón.</p>`,
+      <p>Al energizar, los flip-flops arrancan con cualquier valor: hace falta un reset de power-on. El botón, en cambio, cambia en cualquier instante respecto del reloj, así que hay que sincronizarlo antes de repartirlo, o partes del diseño saldrían del reset en ciclos distintos.</p>`,
     inThisProject: `
-      <p>${L('por_reg')} es un registro de desplazamiento de <code>POR_CYCLES = 4</code> bits que se inicializa en <code>1111</code> y en cada flanco desplaza un 0 por la derecha (<code>{por_reg[POR_CYCLES-2:0], 1'b0}</code>). Su bit más alto vale 1 durante 4 ciclos tras la configuración y después queda en 0 para siempre.</p>
-      <p>El botón (que en el top llega como <code>i_reset | ~locked</code>, o sea también reset mientras el MMCM no enganchó) pasa por ${L('u_btn_sync', 'u_btn_sync')} (un <code>sync_2ff</code> con <code>INIT = 1</code>, el mismo módulo que usa el top para la línea RX).</p>
-      <p>La salida es ${L('o_reset')} = <code>por_reg[POR_CYCLES-1] | btn_reset</code>: reset activo en alto, sincrónico con <code>i_clk</code>. Con <code>INIT = 1</code> el reset también está activo durante los primeros ciclos después de configurar, aunque el botón no se toque.</p>
-      <p><b>Reloj.</b> Este bloque de la placa agrupa lo que le da reloj y reset al sistema. El reloj de 70 MHz no sale de <code>reset_gen</code>: lo genera el ${L('u_mmcm', 'MMCME2_BASE')} del top (100 MHz &times; 7 / 10) y lo reparte el BUFG <code>u_out</code>. Se lo dibuja acá como parte (sin entrar) porque <code>locked</code> se mezcla con el botón antes de llegar a <code>i_btn_reset</code>: el sistema queda en reset hasta que el reloj es estable. El top también usa un <code>sync_2ff</code> (<code>u_rx_sync</code>) para la línea RX de la UART.</p>
-      <p>Nota: el README de <code>common/</code> habla de "un contador"; el RTL usa este shift register, que es más barato (sin sumador) y cumple lo mismo.</p>`,
+      <ul>
+        <li>${L('por_reg')}: 4 bits que arrancan en <code>1111</code> (valor del bitstream) y van metiendo ceros. Dan 4 ciclos de reset sin botón.</li>
+        <li>El botón llega como <code>i_reset | ~locked</code>: el sistema también queda en reset hasta que el ${L('u_mmcm', 'MMCM')} engancha. Pasa por ${L('u_btn_sync', 'u_btn_sync')}.</li>
+        <li>El reloj de 70 MHz no sale de acá: lo genera el MMCM del top (100 &times; 7 / 10).</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Shift register vs. contador.</b> Un contador de N bits cuenta hasta 2<sup>N</sup>; para "unos pocos ciclos" basta un desplazador de 4 FFs sin lógica. Contra: la duración es lineal en bits (para 1 ms a 70 MHz haría falta un contador).</p>
-      <p><b>Reset sincrónico.</b> Todos los registros del diseño usan <code>if (i_reset)</code> dentro de <code>always @(posedge clk)</code>. Es más fácil de cerrar en timing que el reset asincrónico y el cambio de <code>sys_reset</code> está alineado con el reloj gracias a este módulo. Alternativa: reset asincrónico con deassert sincronizado (el estándar de Xilinx), que además resetea sin reloj activo; no hace falta acá porque el reloj ya está corriendo cuando se aprieta el botón.</p>
-      <p><b>Una sola fuente.</b> Un solo <code>sys_reset</code> para UART y debug unit evita que partes del sistema salgan del reset en ciclos distintos.</p>`,
+      <p><b>Desplazador y no contador</b>: para unos pocos ciclos alcanzan 4 flip-flops sin sumador.</p>
+      <p><b>Reset sincrónico</b> en todo el diseño: más fácil de cerrar en timing, y este módulo garantiza que <code>sys_reset</code> cambie alineado con el reloj. Una sola fuente para UART y debug unit, para que salgan del reset en el mismo ciclo.</p>`,
   },
   refs: [
     { label: 'por_reg', sym: 'por_reg' },

@@ -23,20 +23,15 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>Imaginá <code>add x1, x2, x3</code> seguida de <code>sub x4, x1, x5</code>. La segunda necesita el valor de <code>x1</code> justo cuando la primera recién terminó de calcularlo. Pero en un pipeline, "escribir el registro" ocurre varias etapas después de "calcular": el resultado de la suma existe en el registro EX/MEM un ciclo antes de que el regfile lo guarde.</p>
-      <p>Esperar a que el valor llegue al banco de registros costaría burbujas (stalls) en casi cada instrucción. Pero el valor ya existe, solo que en otro lugar del chip. La solución mínima es <b>tomarlo de ahí</b>: agregar a la entrada de la ALU un multiplexor que, además del valor leído del banco (que puede ser viejo), acepte los resultados que todavía están en los registros de pipeline de las etapas siguientes.</p>
-      <p>Hace falta un selector que diga "de qué fuente tomar" para cada operando, generado por una unidad que compara los registros fuente de la instrucción en EX con los destinos de las instrucciones que están más adelante. Ese selector es el que codifica <code>00 / 10 / 01</code>.</p>`,
+      <p>En <code>add x1,…</code> seguida de <code>sub …, x1, …</code>, el resultado de la suma ya existe en EX/MEM pero todavía no llegó al regfile. En lugar de esperar, un mux en la entrada de la ALU lo toma de donde está.</p>`,
     inThisProject: `
-      <p>Hay un mux por operando, ambos escritos en un único <code>always @(*)</code> con un <code>case</code> sobre el selector que entrega ${g('u_fwd', 'forward_unit', F)}:</p>
       <ul>
-        <li><code>2'b10</code>: ${g('fwd_a_val')} / ${g('fwd_b_val')} toman ${g('mem_fwd')} (la instrucción que está ahora en MEM): el resultado de la ALU, PC+4 o el inmediato de LUI, nunca el dato de la dmem. El dato de un load llega desde WB, después del stall.</li>
-        <li><code>2'b01</code>: toman ${g('wb_result')} (la instrucción en WB, hace 2).</li>
-        <li><code>default</code> (<code>00</code>): toman <code>ex_rdata1</code> / <code>ex_rdata2</code>, lo que leyó el regfile en ID.</li>
-      </ul>
-      <p>La salida del mux B tiene un segundo destino: va a EX/MEM como <code>ex_rdata2</code>, es decir, es el dato que escribe un store, ya con forwarding. La dependencia a distancia 3 no necesita mux: la resuelve el bypass interno del regfile.</p>`,
+        <li><code>10</code>: ${g('mem_fwd')}, el resultado de la instrucción en MEM. Nunca trae el dato de la dmem: un load se adelanta desde WB.</li>
+        <li><code>01</code>: ${g('wb_result')}. <code>00</code>: lo que leyó el regfile.</li>
+        <li>La salida B también va a EX/MEM como dato del store, ya con forwarding.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Dos muxes 3:1 son el hardware mínimo para tener CPI casi 1. La alternativa más simple, <b>sin forwarding</b> (solo stalls), se ofrece como modo didáctico en la GUI: el hardware es más chico, pero cada dependencia RAW cuesta hasta 2 burbujas. Una <b>red de bypass completa</b> agrega más fuentes (por ejemplo, la salida de la ALU en el mismo ciclo o varios pipes), algo que solo tiene sentido en diseños superescalares. La <b>planificación por el compilador</b> (MIPS I con delay slots) elimina el hardware a costa del código.</p>
-      <p>Notar que este mux queda en el camino crítico: después de la lógica de comparación de la forward_unit y antes de la ALU.</p>`,
+      <p>Dos muxes 3:1 son el hardware mínimo para que las dependencias entre aritméticas no frenen. El costo es que quedan en el camino crítico, entre la forward_unit y la ALU: por eso sacar la dmem de la entrada <code>10</code> fue lo que permitió subir a 70 MHz.</p>`,
   },
   refs: [
     { label: 'fwd_a_val', sym: 'fwd_a_val' },

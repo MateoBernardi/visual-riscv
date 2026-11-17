@@ -16,17 +16,14 @@ export default {
   kind: 'fsm',
   explain: {
     firstPrinciples: `
-      <p>El transmisor recorre la trama en orden: reposo, start, ocho datos, stop, reposo. Una FSM de cuatro estados lo describe de forma natural. A diferencia del receptor, la FSM del transmisor es la que <i>decide el nivel de la línea</i>: en cada estado define qué debe mostrar la línea y el datapath lo registra.</p>
-      <p>Para expresar "qué mostrar" se usan dos señales: <code>o_tx_data</code> (1 = mostrar el bit actual del byte) y <code>o_tx_level</code> (el nivel fijo cuando <code>tx_data = 0</code>). Así la línea vale 1 en IDLE y STOP, 0 en START y el bit de datos en DATA.</p>
-      <p>La FSM también es la que habla con el resto del sistema: se dispara con <code>i_tx_ready</code> y avisa <code>o_tx_done</code> exactamente cuando se completó la trama.</p>`,
+      <p>Cuatro estados recorren la trama: reposo, start, datos, stop. Acá la FSM decide el nivel de la línea: <code>o_tx_data</code> (mandar el bit del byte) u <code>o_tx_level</code> (un nivel fijo).</p>`,
     inThisProject: `
-      <p>Los estados son los mismos que en el receptor (${L('IDLE')} = 00, START = 01, DATA = 10, STOP = 11). Diferencia clave: IDLE &rarr; START <b>no espera un tick</b>; arranca en cuanto <code>i_tx_ready = 1</code>, con <code>o_s_clear</code> y <code>o_load</code>. Los demás avances sí esperan <code>i_tick &amp;&amp; i_s_last</code> (16 ticks por bit).</p>
-      <p>Valores por defecto de las salidas: <code>o_tx_level = 1</code> y el resto en 0; cada estado fija <code>o_tx_level</code> (1 IDLE, 0 START, 1 STOP) o <code>o_tx_data</code> (DATA).</p>
-      <p>En DATA, el <code>o_shift</code> ocurre en el último tick del bit, y con <code>o_n_inc</code> o la salida a STOP según <code>i_n_last</code>. En STOP, con <code>i_tick &amp;&amp; i_s_last</code> vuelve a IDLE y activa <code>o_tx_done</code>. Si <code>i_tx_ready</code> sigue en 1 (otro byte en el FIFO), el ciclo siguiente ya está de vuelta en START: sin hueco.</p>`,
+      <ul>
+        <li>IDLE &rarr; START no espera tick: arranca con <code>i_tx_ready</code>. El resto avanza con <code>i_tick &amp;&amp; i_s_last</code>.</li>
+        <li>Al final de STOP emite <code>o_tx_done</code>; si hay otro byte, al ciclo siguiente ya está en START.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>FSM decide el nivel de la línea vs. el datapath.</b> Si el datapath dedujera el nivel mirando el estado, la lógica del estado se duplicaría. Aquí cada estado declara su nivel junto a sus demás salidas.</p>
-      <p><b>Arrancar sin tick.</b> Esperar un tick agregaría hasta 1/16 de bit de latencia para nada, y la línea ya está en reposo (1) mientras tanto. Como contrapartida el primer bit de start tiene una duración que puede ser hasta 1/16 de bit más corta.</p>
-      <p><b>Sin estado de espera extra entre tramas.</b> El stop bit dura un bit completo (16 ticks) antes de poder arrancar otra trama, que es lo mínimo que exige 8N1.</p>`,
+      <p>Cada estado declara su nivel de línea junto con sus demás salidas, en vez de que el datapath lo deduzca del estado. Arrancar sin tick ahorra hasta 1/16 de bit de espera inútil.</p>`,
   },
   refs: [{ label: 'IDLE', sym: 'state:IDLE' }, { label: 'o_tx_done', sym: 'o_tx_done' }],
   grid: [10, 6],

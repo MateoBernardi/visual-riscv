@@ -16,18 +16,17 @@ export default {
   kind: 'struct',
   explain: {
     firstPrinciples: `
-      <p>Un CPU solo no sirve: necesita un <b>reloj</b>, un <b>reset</b> y una forma de que una persona le cargue un programa y mire qué hizo. En la FPGA no hay sistema operativo: solo los pines de la placa (oscilador, botón, LEDs, puerto serie).</p>
-      <p>El top es <i>estructural</i>: no calcula nada, instancia módulos y los conecta a esos pines. Por eso es la raíz del recorrido.</p>
-      <p>Para pausar el CPU no se toca el reloj (eso genera glitches y skew): el reloj corre siempre y cada flip-flop tiene un <i>enable</i>.</p>`,
+      <p>Un CPU solo no sirve: necesita reloj, reset y una forma de cargarle un programa y mirar qué hizo. El top es estructural: instancia módulos y los conecta a los pines de la placa. Para pausar el CPU no se gatea el reloj (glitches, skew): el reloj corre siempre y cada flip-flop tiene un <i>enable</i>.</p>`,
     inThisProject: `
-      <p>La cadena es ${L('u_uart')} &harr; ${L('u_debug')} &harr; ${L('u_cpu')}. La debug unit maneja al CPU con <code>cpu_enable</code> y <code>cpu_reset</code>, escribe la imem y lee el estado por el bus de debug.</p>
-      <p><b>Reloj.</b> El ${L('u_mmcm', 'MMCM')} convierte los 100 MHz de la placa en <b>70 MHz</b> para todo el sistema. Mientras no engancha, el sistema queda en reset.</p>
-      <p><b>Reset.</b> El CPU no cuelga del reset del sistema sino de <code>cpu_reset</code>: así <code>X</code> y la carga de un programa resetean solo al CPU, sin perder la UART.</p>
-      <p><b>LEDs y display.</b> LD0..LD2 muestran habilitado, reset y detenido; LD10..LD15 los eventos del pipeline (forwarding, stall, flush, excepción). Con SW0, el display muestra la última escritura en un registro.</p>`,
+      <ul>
+        <li>Cadena ${L('u_uart')} &harr; ${L('u_debug')} &harr; ${L('u_cpu')}: la debug unit maneja <code>cpu_enable</code> y <code>cpu_reset</code>, escribe la imem y lee el bus de debug.</li>
+        <li>El ${L('u_mmcm', 'MMCM')} pasa los 100 MHz de la placa a 70 MHz; hasta que engancha, todo queda en reset.</li>
+        <li>LD0..LD2: habilitado, reset, detenido. LD10..LD15: forwarding, stall, flush, excepción. Con SW0 el display muestra la última escritura en un registro.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>70 MHz.</b> Es la frecuencia más alta, en pasos de 10 MHz, a la que el diseño cierra timing en el peor caso; a 80 MHz el camino crítico (forwarding &rarr; ALU &rarr; decisión del salto) ya no entra. Subir más pediría resolver los saltos de otra forma o agregar etapas.</p>
-      <p><b>Un solo dominio de reloj.</b> Todo corre con <code>clk</code>; lo único asíncrono (RX, botón, switch) pasa por <code>sync_2ff</code>. Es mucho más simple que cruzar dominios con FIFOs asíncronas.</p>
-      <p><b>Palabra de versión.</b> El top agrega al dump un <code>BUILD_ID</code> (el commit del hardware), para que la verificación en la placa sepa qué bitstream está probando.</p>`,
+      <p><b>70 MHz</b> es el paso de 10 MHz más alto que cierra timing en el peor caso; a 80 MHz el camino forwarding &rarr; ALU &rarr; decisión del salto ya no entra.</p>
+      <p><b>Un solo dominio de reloj</b>: lo único asíncrono (RX, botón, switch) pasa por <code>sync_2ff</code>, sin FIFOs asíncronas.</p>
+      <p><b>El CPU tiene su propio reset</b> (<code>cpu_reset</code>), así <code>X</code> o una carga lo reinician sin cortar la UART. Y el dump trae un <code>BUILD_ID</code> para que la prueba en la placa sepa qué bitstream está midiendo.</p>`,
   },
   refs: [
     { label: 'MMCM', sym: 'u_mmcm' },
@@ -101,7 +100,7 @@ export default {
     { id: 'n_imem_we', from: 'u_debug', to: 'u_cpu', name: 'imem_we', width: 1, desc: '<p>De: <code>o_imem_write_enable</code> (sale de un registro). A: <code>i_imem_we</code>. Para: habilitar la escritura de un byte en la memoria de instrucciones.</p>' },
     { id: 'n_imem_waddr', from: 'u_debug', to: 'u_cpu', name: 'imem_waddr', width: 10, desc: '<p>De: <code>o_imem_write_addr</code> (dirección <b>en bytes</b>, <code>IMEM_ADDR_W = 10</code>: 1 KB). A: <code>i_imem_waddr</code>. Para: elegir qué byte de la imem se escribe.</p>' },
     { id: 'n_imem_wdata', from: 'u_debug', to: 'u_cpu', name: 'imem_wdata', width: 8, desc: '<p>De: <code>o_imem_write_data</code>. A: <code>i_imem_wdata</code>. Para: el byte a escribir (o 0x13/0x00 al rellenar con NOP).</p>' },
-    { id: 'n_dbg_addr', from: 'u_debug', to: 'u_cpu', name: 'dbg_addr', width: 16, desc: '<p>De: <code>o_dbg_addr</code>. A: <code>i_dbg_addr</code>. Para: elegir qué palabra del mapa de debug (0..85) se lee durante un dump.</p>' },
+    { id: 'n_dbg_addr', from: 'u_debug', to: 'u_cpu', name: 'dbg_addr', width: 16, desc: '<p>De: <code>o_dbg_addr</code>. A: <code>i_dbg_addr</code>. Para: elegir qué palabra del mapa de debug (0..89) se lee durante un dump.</p>' },
     { id: 'n_dbg_data', from: 'u_cpu', to: 'u_debug', name: 'dbg_data', width: 32, desc: '<p>De: <code>o_dbg_data</code> (PC, latches, registros, dmem). A: <code>i_dbg_data</code>. Para: la palabra que la debug unit serializa a la PC.</p>' },
     { id: 'n_dbg_count', from: 'u_cpu', to: 'u_debug', name: 'dbg_count', width: 16, desc: '<p>De: <code>o_dbg_count</code> (= 89, lo define el CPU; el top le suma 1 por la palabra de versión). A: <code>i_dbg_count</code>. Para: que el dump sepa cuántas palabras mandar sin tener el mapa cableado en la debug unit.</p>' },
     { id: 'n_led_dbg', from: 'u_debug', to: 'port:o_led', name: 'o_led', width: 2, desc: '<p>Bits [1:0] de <code>o_led</code>: <code>cpu_enable</code> (LD0) y <code>cpu_reset</code> (LD1), tomados de la debug unit.</p>' },

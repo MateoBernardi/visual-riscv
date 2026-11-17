@@ -22,24 +22,14 @@ export default {
   kind: 'seq',
   explain: {
     firstPrinciples: `
-      <p>Un circuito combinacional no recuerda nada: su salida es, en todo momento, una función de sus entradas. Si la etapa ID leyera directamente la salida de la memoria de instrucciones, vería cambiar la instrucción a mitad del ciclo cada vez que el PC cambia de valor, y no habría forma de que dos etapas trabajen sobre instrucciones distintas al mismo tiempo.</p>
-      <p>Por eso entre una etapa y la siguiente se coloca un <b>registro de pipeline</b>: un conjunto de flip-flops que, en cada flanco de reloj, captura lo que produjo la etapa anterior y lo mantiene estable durante todo el ciclo siguiente. Así, mientras ID decodifica la instrucción N, IF ya está buscando la N+1 sin que se pisen. Todo lo que una instrucción vaya a necesitar más adelante tiene que viajar con ella en estos registros: su PC, por ejemplo, para poder calcular el destino de un salto.</p>
-      <p>Además de guardar, el registro tiene que poder <b>retener</b> su contenido (para frenar el pipeline cuando una instrucción depende de un load que no terminó) y poder <b>anularse</b> (cuando se descubre que la instrucción pertenece al camino equivocado de un salto). Anular significa reemplazarla por una instrucción que no hace nada observable: el NOP, que en RISC-V es <code>addi x0, x0, 0</code> = <code>0x00000013</code>.</p>
-      <p>Finalmente, hace falta una señal de enable global para pausar todo el CPU (en este proyecto lo usa la debug unit para ejecutar paso a paso). Hay que decidir qué prevalece cuando varias condiciones coinciden; esa prioridad es la lógica que rodea a los flip-flops.</p>`,
+      <p>Sin un registro entre etapas, ID vería cambiar la instrucción cada vez que cambia el PC. El registro de pipeline la captura en el flanco y la mantiene un ciclo. Además tiene que poder <b>retener</b> (stall) y <b>anularse</b> (flush: se carga un NOP, <code>0x00000013</code>).</p>`,
     inThisProject: `
-      <p>En este diseño el pipeline tiene 5 etapas y por lo tanto 4 registros; este es el primero, ${g('module:if_id_reg', 'if_id_reg')}, instanciado como <code>u_if_id</code> en riscv_pipeline.v. Guarda solo dos campos: <code>id_pc</code> (el PC de la instrucción) e <code>id_inst</code> (la palabra de 32 bits).</p>
-      <p>La prioridad dentro del <code>always @(posedge clk)</code> es exactamente esta:</p>
       <ul>
-        <li><b>rst</b>: <code>id_pc = 0</code> e <code>id_inst = 32'h00000013</code> (NOP).</li>
-        <li><b>!en</b>: si el CPU está pausado, retiene; <i>ni flush ni stall se evalúan</i>.</li>
-        <li><b>flush</b>: carga <code>id_pc = 0</code> e <code>id_inst = NOP</code>. Observá que el flush gana sobre el stall.</li>
-        <li><b>!stall</b>: carga <code>if_pc</code> / <code>if_inst</code>.</li>
-        <li>Si <code>stall = 1</code> (y no hay flush) queda sin ningún <code>else</code>, y el registro retiene su valor.</li>
-      </ul>
-      <p>El <code>flush</code> que recibe es <code>flush_if_id = flush_if_id_r | stop_fetch</code>, o sea que lo activan tanto un salto tomado como un halt. Poner el PC en cero al hacer flush es inocuo: la instrucción descartada nunca llega a ejecutarse, así que su PC no importa.</p>`,
+        <li>Prioridad: <code>rst</code> &gt; <code>!en</code> (retiene, ignora flush y stall) &gt; <code>flush</code> &gt; <code>stall</code>. El flush gana sobre el stall.</li>
+        <li>Su flush es <code>flush_if_id_r | stop_fetch</code>: lo activan un salto tomado y un halt.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Usar un NOP real en lugar de un bit de validez es lo más barato: no hay lógica extra en las etapas siguientes, porque un NOP ya "no hace nada" al decodificarse (escribe en x0). La contrapartida es que desde la debug unit no se distingue un NOP del programa de una burbuja; una alternativa es el <b>pipeline con bit de validez</b> (como en Rocket o Ibex), que hace explícitas las burbujas a costa de un bit por etapa.</p>
-      <p>Frente a un diseño con <b>menos etapas</b> (2-3, como Ibex o Cortex-M0+) este registro simplemente no existe; con <b>más etapas</b> (superpipelining) habría varios registros de este tipo en fetch. Elegir 5 etapas es el estándar de libro (Patterson-Hennessy) y el que hace más claros los tres tipos de riesgo.</p>`,
+      <p>Anular cargando un NOP real, en vez de llevar un bit de validez, no agrega lógica en ninguna etapa: un NOP ya escribe en x0. La contra es que en el volcado una burbuja no se distingue de un NOP del programa.</p>`,
   },
   refs: [
     { label: 'if_id_reg', sym: 'module:if_id_reg' },

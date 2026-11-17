@@ -52,22 +52,15 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>El hardware del datapath es siempre el mismo: una ALU, una memoria, un banco de registros, un puñado de multiplexores. Lo que cambia entre una instrucción y otra es <i>cómo</i> se configuran: qué operación hace la ALU, si el segundo operando viene de un registro o de la instrucción, si hay que escribir memoria, de dónde sale el resultado, a dónde apunta el PC. Esas "perillas" son las señales de control.</p>
-      <p>Alguien tiene que traducir los 32 bits de la instrucción en esas perillas. La información está en pocos bits: el opcode (7 bits) dice la familia de la instrucción, y funct3 y funct7 la afinan. La traducción es una función fija de esos bits, así que se hace con lógica <b>combinacional</b>: no necesita memoria, solo una tabla de verdad.</p>
-      <p>Se puede diseñar esa tabla de dos maneras. Un único decodificador gigante, o <b>dos niveles</b>: un control principal por opcode y un sub-control para la ALU que mira funct3/funct7 (el "ALUOp" de los libros). La separación ahorra lógica porque solo las instrucciones de tipo R e I necesitan distinguir la operación de la ALU; para el resto la operación está implícita en el opcode (siempre suma para calcular direcciones).</p>
-      <p>Un detalle de diseño es el valor por defecto de cada señal: si llega un opcode que el procesador no implementa, las señales deben quedar en un estado seguro, con ninguna escritura de registro ni de memoria.</p>`,
+      <p>El datapath es siempre el mismo; lo que cambia por instrucción es cómo se configuran sus muxes, la ALU y las escrituras. El control traduce opcode, funct3 y funct7 a esas señales con lógica combinacional. Si llega un opcode desconocido, todo tiene que quedar en un estado seguro: sin escrituras.</p>`,
     inThisProject: `
-      <p>Es ${g('module:control', 'control')}, un único <code>always @(*)</code> con un <code>case (opcode)</code> sobre las constantes ${g('R', 'R / I / LOAD / STOR / BR / JAL / JALR / LUI / AUIP / SYS')}. Empieza poniendo <b>todo en cero</b> (<code>{reg_write,alu_src,mem_read,mem_write,branch,jump,halt}=7'b0</code>, <code>wb_sel=00</code>, <code>alu_op=OP_ADD</code>, <code>imm_sel=000</code>), así que un opcode desconocido se comporta como un NOP.</p>
       <ul>
-        <li><b>Sub-decodificación de ALU</b>: en tipo R, <code>case ({funct7[5], funct3})</code> (ADD/SUB/AND/OR/XOR/SLT/SLTU/SLL/SRL/SRA); en tipo I, <code>case (funct3)</code>, y para <code>funct3 = 5</code> usa <code>funct7[5]</code> para elegir SRAI o SRLI. Los códigos son los de <code>alu_ops.vh</code>.</li>
-        <li><b>Branches</b>: <code>alu_op = (funct3==4 || funct3==5) ? OP_SLT : OP_SUB</code>. BLT/BGE usan SLT; todos los demás SUB. Igual la condición real la decide branch_unit con las banderas <code>zero/lt/ltu</code> de la ALU.</li>
-        <li><b>halt</b>: <code>SYS: halt=1</code> para cualquier SYSTEM. No hay CSRs ni excepciones.</li>
-        <li><b>is_jalr / is_auipc no salen de acá</b>: se derivan en riscv_pipeline.v comparando el opcode.</li>
-        <li>JAL y JALR llevan <code>wb_sel = 10</code> (PC+4) y <code>jump = 1</code>; LUI lleva <code>wb_sel = 11</code> con <code>imm_sel = 011</code>, y no usa la ALU.</li>
+        <li>Todo arranca en cero, así que un opcode desconocido se comporta como NOP. Quien lo detecta como ilegal es <code>illegal_check</code>, aparte.</li>
+        <li>BLT/BGE piden SLT a la ALU y el resto de los branches SUB, pero la condición la decide branch_unit con <code>zero/lt/ltu</code>.</li>
+        <li>Cualquier SYSTEM pone <code>halt</code>; <code>is_jalr</code> e <code>is_auipc</code> se derivan en riscv_pipeline.v, no acá.</li>
       </ul>`,
     whyThisChoice: `
-      <p>Un <code>case</code> plano con las salidas escritas por opcode es lo más legible para un core chico: cada línea es la fila de una tabla de verdad. El sub-case de ALU adentro de R/I es, en la práctica, la decodificación en dos niveles de Patterson-Hennessy. Las alternativas más relevantes: <b>control microprogramado</b> (ROM indexada por opcode, como los 8086/68000: fácil de modificar pero más lento y grande), <b>decodificar además <code>uses_rs1</code> / <code>uses_rs2</code></b> (Rocket, Ibex) para corregir los falsos stalls de hazard_unit, <b>soporte de CSR y traps</b> (ecall → excepción en lugar de frenar el CPU) y <b>decodificar instrucciones comprimidas</b> (extensión C).</p>
-      <p>Aclaración sobre esta implementación: otros procesadores colocan la decodificación de control en la misma etapa que la lectura de registros, igual que acá, pero aprovechan que la lectura es paralela a la decodificación (los campos rs1/rs2 están siempre en el mismo lugar).</p>`,
+      <p>Un <code>case (opcode)</code> plano con un sub-case de ALU dentro de R/I es la decodificación en dos niveles de libro escrita como tabla de verdad: cada línea se lee como una fila. Sumar una instrucción es sumar una línea.</p>`,
   },
   refs: [
     { label: 'control', sym: 'module:control' },

@@ -16,18 +16,16 @@ export default {
   kind: 'struct',
   explain: {
     firstPrinciples: `
-      <p>Transmitir es el problema inverso a recibir, y más simple: el emisor <i>manda</i> el reloj de la trama, así que sabe exactamente cuándo cambiar la línea. Hay que sacar, durante 16 ticks cada uno, un bit de start (0), los 8 bits del byte (LSB primero) y un bit de stop (1), y volver a reposo (1). Para eso se carga el byte en un registro de desplazamiento y se saca el bit 0; después de cada bit, se desplaza a la derecha para que el siguiente quede en la posición 0.</p>
-      <p>La línea tiene que ser <b>limpia</b>: si la salida cambiara combinacionalmente al ritmo de una FSM, podría tener pequeños glitches justo cuando el receptor la mira. La solución estándar es pasar la salida por un flip-flop: el valor de la línea se calcula en un ciclo (<code>tx_next</code>) y se registra, de modo que el pin cambia solo en los flancos de reloj y se mantiene estable el resto del ciclo.</p>
-      <p>Como en el receptor, hacen falta un contador de ticks (cuándo termina cada bit), un contador de bits (cuándo termina el byte) y una máquina de estados con la fase de la trama. Además, el transmisor tiene que coordinarse con quien le da los bytes: necesita una señal "tengo un byte listo" (<code>i_tx_ready</code>) y avisar "terminé de enviarlo" (<code>o_tx_done</code>) para que se pase al siguiente.</p>`,
+      <p>Transmitir es más simple que recibir: el emisor marca el tiempo. Saca 16 ticks de start (0), los 8 bits (LSB primero) y 16 de stop (1). El byte se carga en un desplazador y siempre se manda el bit 0. La salida pasa por un flip-flop para que el pin no tenga glitches.</p>`,
     inThisProject: `
-      <p>Misma estructura que el receptor: ${L('FSM')}, ${L('COMB')} y ${L('REGS')}. La salida ${L('o_tx')} es el registro <code>tx</code> (<code>assign o_tx = tx</code>), que reinicia en 1 (reposo). ${L('o_tx_done')} es un pulso combinacional que sale de la FSM.</p>
-      <p><b>Handshake con el FIFO.</b> Desde <code>uart_core</code>: <code>i_tx_ready = ~tx_empty</code> del <code>TX_FIFO</code>, <code>i_din</code> es la cabeza del FIFO y <code>o_tx_done</code> es el pop. En IDLE, apenas <code>i_tx_ready = 1</code>, la FSM carga <code>i_din</code> en <code>send_byte</code> (<code>o_load</code>) y pasa a START sin esperar un tick; el byte permanece en el FIFO hasta <code>o_tx_done</code>. Por eso el FIFO queda "ocupado" durante la transmisión y <code>tx_full</code> avisa a la debug unit con anticipación.</p>
-      <p><b>Cronología.</b> START: línea = 0 durante 16 ticks. DATA: ocho bits, 16 ticks cada uno, con <code>tx_data = 1</code> (la línea toma <code>send_byte[0]</code>) y desplazando el byte a la derecha al final de cada bit. STOP: línea = 1 durante 16 ticks; al final, <code>o_tx_done = 1</code> y vuelve a IDLE. Si el FIFO ya tiene otro byte, la siguiente trama arranca inmediatamente: no hay hueco entre bytes (el stop de un byte es seguido sin espera por el start del siguiente).</p>
-      <p><b>Detalle de fase.</b> Como el estado START arranca en el ciclo en que se ve <code>i_tx_ready</code> y no en un tick, la duración efectiva del primer bit es entre 15 y 16 períodos de tick más una fracción: una variación de a lo sumo 1/16 de bit que el receptor absorbe sin problema. Además, la línea refleja el estado con un ciclo de retardo, porque <code>o_tx</code> está registrado.</p>`,
+      <ul>
+        <li>Arranca apenas <code>i_tx_ready = ~tx_empty</code>, sin esperar un tick. El byte sigue en la FIFO hasta <code>o_tx_done</code>, que hace el pop.</li>
+        <li>Si hay otro byte, la trama siguiente arranca enseguida, sin hueco.</li>
+        <li>El primer bit puede durar hasta 1/16 de bit menos, que el receptor absorbe.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Registrar la salida.</b> Cuesta un flip-flop y 1 ciclo de latencia, pero garantiza un pin sin glitches y simplifica el análisis de timing del pin de salida.</p>
-      <p><b>Cargar el byte al comenzar vs. leer el FIFO directamente.</b> Se copia <code>i_din</code> a <code>send_byte</code> porque el byte se va a desplazar; la cabeza del FIFO no debe modificarse hasta el <code>o_tx_done</code>. La alternativa, un mux de 8:1 indexado por <code>n</code> sobre <code>i_din</code>, ahorraría el registro de 8 bits pero obliga a mantener estable la cabeza durante toda la transmisión (lo cual sí ocurre acá), con un mux de 8 entradas en el camino hacia el pin.</p>
-      <p><b>Sin paridad ni control de flujo.</b> RTS/CTS o XON/XOFF evitarían que la PC sature al transmisor, pero acá el que transmite más es la FPGA (el dump), y es la propia debug unit la que se frena con <code>tx_full</code>. Del lado de la PC, el sistema operativo siempre acepta bytes.</p>`,
+      <p><b>Salida registrada</b>: un flip-flop y un ciclo de latencia, a cambio de un pin limpio.</p>
+      <p><b>Copiar el byte a <code>send_byte</code></b> para desplazarlo, sin tocar la cabeza de la FIFO hasta el pop. Sin control de flujo: el que más transmite es la FPGA (el volcado) y se frena sola con <code>tx_full</code>.</p>`,
   },
   refs: [
     { label: 'FSM', sym: 'FSM' },

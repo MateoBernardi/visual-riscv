@@ -16,19 +16,16 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>La FSM decide <i>qué</i> hacer ("guardar este byte como longitud", "avanzar la dirección"), pero alguien tiene que hacer las cuentas: sumar 1 a un contador, armar el byte que sale por TX, comparar un contador con un límite. Esa parte es lógica combinacional pura: sale de un sistema de entradas con puertas y multiplexores, sin memoria.</p>
-      <p>Un patrón muy usado para un registro con varias fuentes es la <b>cadena de prioridad</b>: "si <code>clear</code> pon 0; si no, si <code>inc</code> pon +1; si no, mantené". Es un mux anidado cuyo último caso es el propio valor actual (por eso el registro "recuerda"). La FSM solo levanta la señal de control que corresponde; el mux decide el valor. Separar esto del registro (otro módulo) evita escribir <code>if</code> incompletos que generan latches.</p>
-      <p>Además de calcular valores nuevos, el camino de datos mira los registros y devuelve <b>banderas</b> ("¿era el último byte?", "¿entra en la memoria?") que la FSM usa como condiciones de sus transiciones. Así la FSM no hace aritmética: solo consulta bits.</p>`,
+      <p>La FSM decide <i>qué</i> hacer; este bloque hace las cuentas: contadores, el byte que sale por TX, comparaciones. Cada registro tiene una cadena de prioridad (limpiar, si no incrementar, si no mantener) y devuelve banderas que la FSM usa como condiciones. Así la FSM no hace aritmética: solo consulta bits.</p>`,
     inThisProject: `
-      <p><b>Longitud y tamaño.</b> ${L('n_bytes')} = <code>{i_len, 2'b00}</code> son los bytes del programa (4 por instrucción, por eso se desplaza 2 bits). ${L('n_bytes_rx')} = <code>{i_rx_byte, i_len[7:0], 2'b00}</code> es lo mismo pero con el byte alto <i>todavía entrando</i> (en LOAD_LEN_HI el registro <code>len</code> aún no tiene el byte alto, que viene por <code>i_rx_byte</code>). Con él se calculan ${L('o_len_zero')} (n = 0) y ${L('o_overflow_next')} (<code>n_bytes_rx &gt; CAP_BYTES</code>, con ${L('CAP_BYTES')} = <code>1 &lt;&lt; IMEM_ADDR_W</code> = 1024 bytes).</p>
-      <p><b>Contador de bytes.</b> ${L('o_byte_cnt_next')} (18 bits: soporta hasta 4&times;65535 bytes) y las banderas ${L('o_load_last')} (<code>byte_cnt == n_bytes - 1</code>) y ${L('o_in_range')} (<code>byte_cnt &lt; CAP_BYTES</code>). Con <code>in_range = 0</code> los bytes de más se descartan, no se escriben fuera de la imem.</p>
-      <p><b>Imem.</b> ${L('o_imem_addr_next')} y ${L('o_imem_data_next')}: si <code>i_imem_load</code>, la dirección es los bits bajos de <code>byte_cnt</code> y el dato es el byte recibido o, con <code>i_imem_fill</code>, ${L('nop_byte')}: <code>0x13</code> si <code>byte_cnt[1:0] == 0</code>, si no <code>0x00</code> (el NOP RISC-V <code>0x00000013</code>, en little-endian).</p>
-      <p><b>Dump.</b> ${L('o_dbg_addr_next')}, ${L('o_dbg_word_next')} (carga <code>i_dbg_data</code> o desplaza <code>{8'h00, i_dbg_word[31:8]}</code>) y ${L('o_byte_idx_next')}; flags ${L('o_dbg_last')} (<code>dbg_addr == count - 1</code>), ${L('o_dbg_count_zero')} y ${L('o_byte_last')} (<code>byte_idx == 3</code>).</p>
-      <p><b>TX.</b> ${L('o_tx_data')} es un mux de prioridad: cuenta baja, cuenta alta, byte bajo de la palabra o, por defecto, <code>i_reply</code>.</p>`,
+      <ul>
+        <li>${L('o_overflow_next')} se calcula con ${L('n_bytes_rx')}, que usa el byte alto mientras todavía está entrando: el error se conoce sin esperar un ciclo.</li>
+        <li>Con ${L('o_in_range')} = 0, los bytes de más se descartan en lugar de escribirse fuera de la imem.</li>
+        <li>${L('nop_byte')} rellena con <code>13 00 00 00</code>: el NOP en little-endian.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Datapath separado de la FSM.</b> Si las cuentas estuvieran dentro del <code>case</code> de la FSM, cada estado repetiría la lógica del contador. Con señales de control (<code>cnt_inc</code>, <code>cnt_clear</code>...) una sola descripción sirve a todos los estados.</p>
-      <p><b>Desplazar la palabra (<code>word_shift</code>) vs. un mux de 4 entradas por <code>byte_idx</code>.</b> Con desplazamiento, el byte a enviar siempre es <code>dbg_word[7:0]</code> (menos hardware en el camino a TX) pero <code>dbg_word</code> se destruye; con un mux de 4:1 no se destruye pero el camino a TX es más ancho. Como la palabra se vuelve a capturar para la siguiente, el desplazamiento alcanza. <code>byte_idx</code> igual hace falta para saber cuándo terminó la palabra.</p>
-      <p><b>Comparar contra <code>n_bytes - 1</code> vs. contar hacia atrás.</b> Un decremento y comparación contra 0 ahorraría un comparador de 18 bits, pero obliga a otro registro; acá se reutiliza <code>byte_cnt</code>, que también sirve de dirección para la imem.</p>`,
+      <p><b>Datapath fuera de la FSM</b>: una sola descripción del contador sirve a todos los estados, en lugar de repetirla en cada rama del <code>case</code>.</p>
+      <p><b>Desplazar la palabra</b> para mandarla: el byte que sale es siempre <code>dbg_word[7:0]</code> y el camino a TX queda angosto. Se destruye la palabra, pero se vuelve a capturar para la siguiente.</p>`,
   },
   refs: [
     { label: 'CAP_BYTES', sym: 'CAP_BYTES' },

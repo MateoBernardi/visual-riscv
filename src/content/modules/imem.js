@@ -22,21 +22,16 @@ export default {
   kind: 'mixed',
   explain: {
     firstPrinciples: `
-      <p>Un programa es una lista de instrucciones que tiene que estar guardada en algún lado antes de ejecutarse. El procesador necesita, en cada ciclo, acceder a "la instrucción número N" casi instantáneamente: eso es una <b>memoria</b>, un arreglo de palabras direccionable. Como el PC habla en bytes pero cada instrucción mide 4 bytes, la memoria se organiza en palabras de 32 bits y se indexa descartando los 2 bits bajos de la dirección.</p>
-      <p>Hay un segundo problema: alguien tiene que <i>poner</i> el programa en esa memoria. Un procesador dedicado podría tenerlo grabado, pero un sistema de desarrollo necesita cargar programas nuevos sin resintetizar la FPGA. Hace falta un segundo acceso, de escritura, que no tenga nada que ver con el camino de ejecución del CPU.</p>
-      <p>Una cuestión más sutil es qué ve el CPU antes de que haya un programa. Si la memoria arranca con valores arbitrarios, el procesador ejecutaría basura. Conviene que el contenido inicial sea inofensivo: una instrucción que no haga nada, el NOP.</p>
-      <p>Finalmente, separar la memoria de instrucciones de la de datos (arquitectura Harvard) permite que IF lea una instrucción y MEM acceda a un dato en el mismo ciclo, evitando un riesgo estructural.</p>`,
+      <p>El programa tiene que estar en una memoria que IF pueda leer cada ciclo. Separarla de la de datos (Harvard) evita que IF y MEM se peleen por el mismo puerto. Y hace falta un segundo acceso, de escritura, para cargar programas sin resintetizar.</p>`,
     inThisProject: `
-      <p>Es ${g('module:imem', 'imem')} (instancia <code>u_imem</code>), parametrizada por <code>ADDR_W</code> (por defecto 10, o sea 2<sup>10</sup> bytes = 1 KB = 256 palabras) y un <code>INIT_FILE</code> opcional para simulación.</p>
       <ul>
-        <li><b>Lectura combinacional</b>: <code>assign instr = mem[addr[ADDR_W-1:2]]</code>. No hay registro de salida; la instrucción aparece en el mismo ciclo en que el PC cambia. Se descartan los 2 bits bajos. Un PC fuera de la imem no se ejecuta: en ID se marca como trap (causa 1, instrucción fuera de la imem).</li>
-        <li><b>Arranque</b>: un bloque <code>initial</code> llena todo con ${g('NOP')} (<code>0x00000013</code>) y, si hay <code>INIT_FILE</code>, lo pisa con <code>$readmemh</code>.</li>
-        <li><b>Puerto de escritura de bytes</b>: <code>wr_en</code>, <code>wr_addr</code>, <code>wr_data[7:0]</code>. La palabra se calcula con ${g('wr_word')} (<code>wr_addr[ADDR_W-1:2]</code>) y un <code>case (wr_addr[1:0])</code> escribe uno de los 4 bytes (little-endian: el byte k del programa cae en la dirección k). Lo usa la debug unit para cargar el programa que llega por UART, de a un byte.</li>
-        <li>La escritura <b>no depende de <code>en</code></b> (el pausado del CPU): el CPU está en reset mientras se carga.</li>
+        <li>Arranca llena de ${g('NOP')}: un CPU sin programa no ejecuta basura.</li>
+        <li>Un PC fuera de la imem no se ejecuta: ID lo marca como trap (causa 1).</li>
+        <li>La escritura no depende de <code>en</code>: el CPU está en reset mientras se carga.</li>
       </ul>`,
     whyThisChoice: `
-      <p>La lectura combinacional (distribuida en LUTRAM) mantiene el fetch en un solo ciclo y evita una etapa extra; la contrapartida es que consume LUTs de la FPGA y limita el tamaño (1 KB). La alternativa es una <b>BRAM síncrona</b>: más capacidad por área, pero la instrucción llega un ciclo después de presentar la dirección, y el pipeline tiene que adelantar la dirección o aceptar una etapa más (así lo hacen VexRiscv y Rocket). Con esa BRAM además hay que decidir cómo congelar IF durante un stall.</p>
-      <p>Otras variantes: una <b>memoria unificada</b> Von Neumann (hazard estructural entre IF y MEM, ver la memoria de datos), una <b>I-cache con prefetch</b> para memorias externas lentas (Cortex-A, Ibex) y el soporte de <b>instrucciones comprimidas (C)</b>, que complicaría el fetch por el desalineamiento. El puerto de escritura es de bytes porque la UART entrega de a un byte; a cambio hay que decodificar 4 casos de carril.</p>`,
+      <p><b>Lectura combinacional</b> (LUTRAM): la instrucción sale en el mismo ciclo, así el fetch es una sola etapa. Con una BRAM síncrona llegaría un ciclo tarde y habría que adelantar la dirección o sumar una etapa. El costo es el tamaño: 1 KB.</p>
+      <p><b>Escritura por bytes</b> porque la UART entrega de a un byte; ensamblar palabras afuera agregaría estado a la debug unit.</p>`,
   },
   refs: [
     { label: 'imem', sym: 'module:imem' },

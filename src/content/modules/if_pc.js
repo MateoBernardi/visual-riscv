@@ -23,16 +23,14 @@ export default {
   kind: 'mixed',
   explain: {
     firstPrinciples: `
-      <p>Un procesador ejecuta un programa que está guardado en memoria como una lista de instrucciones. Para saber cuál toca, necesita recordar "en qué instrucción voy": un número que se guarda entre un ciclo y el siguiente. Ese número es el <b>program counter</b> (PC) y, como tiene que <i>recordar</i>, es un registro (flip-flops que cargan en el flanco de clock).</p>
-      <p>Cada instrucción RV32I ocupa 4 bytes, así que lo normal es que el PC pase de <code>pc</code> a <code>pc + 4</code>. Pero un salto rompe la secuencia: el destino se calcula más adelante en el pipeline y hay que poder sobrescribir el PC. Eso exige un <b>multiplexor</b> con dos candidatos: el siguiente secuencial y el destino del salto.</p>
-      <p>Por último, a veces el PC no debe avanzar (si el pipeline se frena, el CPU está pausado o hay que dejar de buscar instrucciones). Eso se resuelve con un <b>enable</b> de escritura del registro: si vale 0, el PC se queda con su valor.</p>`,
+      <p>El PC es el registro que recuerda "en qué instrucción voy". Lo normal es avanzar 4 bytes; un salto necesita sobrescribirlo (un mux) y un stall o una pausa necesitan que no cambie (un enable).</p>`,
     inThisProject: `
-      <p>El registro es ${g('pc')} y se actualiza en cada flanco: reset sincrónico a <code>32'd0</code>, y si ${g('pc_en')} vale 1 carga ${g('pc_next')}. El enable se arma como <code>pc_en = en &amp; ~stall &amp; ~stop_fetch</code>: se congela con la pausa de la debug unit (<code>en</code>), con un load-use (<code>stall</code>) y cuando hay un halt en camino (<code>stop_fetch</code>).</p>
-      <p>El próximo PC es <code>pc_next = redirect ? redirect_target : (pc + 32'd4)</code>. El sumador +4 no tiene nombre propio: está escrito dentro de esa misma asignación. En cambio <code>redirect</code> y ${g('redirect_target')} vienen de la etapa EX: es un camino "hacia atrás" en el pipeline, por eso un salto tomado deja entrar dos instrucciones equivocadas antes de corregir el PC (y ahí interviene el flush).</p>
-      <p>No hay predictor: se supone siempre "no tomado" y la instrucción siguiente es la secuencial. Los bits bajos del PC no se descartan: se calcula en 32 bits y la imem solo mira <code>addr[ADDR_W-1:2]</code>.</p>`,
+      <ul>
+        <li><code>pc_en = en &amp; ~stall &amp; ~stop_fetch</code>: lo congelan la pausa de la debug unit, un load-use y un halt en camino.</li>
+        <li>${g('redirect_target')} llega desde EX: es un camino hacia atrás, por eso entran dos instrucciones equivocadas antes de corregir.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Cargar PC+4 por defecto y corregir desde EX es lo más barato posible: un sumador, un mux y cero estado extra. La contrapartida es la penalidad de 2 ciclos por salto tomado. Las alternativas listadas para este bloque ofrecen compromisos: una <b>predicción estática BTFN</b> (saltos hacia atrás tomados) acertaría en loops con un sumador de destino temprano; un <b>predictor bimodal o gshare</b> con <b>BTB</b> hace la predicción ya en IF a costa de tablas y de lógica de recuperación; el <b>salto retardado</b> (MIPS) evita flush pero expone la microarquitectura al ISA.</p>
-      <p>Para un core didáctico donde importa ver el flush, la solución simple es la que mejor se entiende.</p>`,
+      <p>Asumir siempre "no tomado" y corregir desde EX es lo más barato posible: un sumador, un mux y cero estado. Cuesta 2 ciclos por salto tomado, pero deja el flush a la vista, que es lo que este core quiere mostrar.</p>`,
   },
   refs: [
     { label: 'pc', sym: 'reg:pc' },

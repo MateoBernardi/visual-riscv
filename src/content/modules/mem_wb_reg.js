@@ -47,20 +47,15 @@ export default {
   kind: 'seq',
   explain: {
     firstPrinciples: `
-      <p>El banco de registros es una memoria con una sola entrada de escritura por ciclo. Cuando una instrucción llega a su última etapa, hay que presentar a esa entrada tres cosas estables: <i>qué</i> escribir, <i>dónde</i> escribirlo y <i>si</i> hay que escribir. Si esas tres cosas dependieran de combinacionales de MEM, cambiarían a lo largo del ciclo (la lectura de la dmem es un camino largo) y podrían corromper el registro equivocado antes de estabilizarse.</p>
-      <p>El último registro de pipeline captura, entonces, el resultado final y su destino, y los sostiene durante todo el ciclo WB. Además cumple otra función: su contenido es la segunda fuente de forwarding (la instrucción que terminó MEM hace un ciclo, o sea, a dos instrucciones de distancia).</p>
-      <p>Por último, hay un asunto lógico con el halt. La instrucción que detiene al procesador (ECALL/EBREAK) tiene que viajar como cualquier otra hasta el final: solo cuando llega a WB se sabe que todas las instrucciones anteriores ya se retiraron, y recién ahí se puede avisar al exterior que el programa terminó.</p>`,
+      <p>El regfile necesita tres cosas estables durante todo el ciclo: qué escribir, dónde y si escribir. Este registro las sostiene. Además, el halt viaja hasta acá: recién en WB se sabe que todas las instrucciones anteriores terminaron.</p>`,
     inThisProject: `
-      <p>Es ${g('module:mem_wb_reg', 'mem_wb_reg')}, instanciado como <code>u_mem_wb</code>. Es el registro más chico: <code>wb_reg_write</code>, <code>wb_halt</code>, <code>wb_result[31:0]</code> y <code>wb_rd[4:0]</code>. Prioridad: <code>if (rst)</code> a 0, <code>else if (en)</code> carga.</p>
       <ul>
-        <li>Guarda <b>un solo</b> campo de datos, <code>wb_result</code>, porque en este diseño el mux <code>wb_sel</code> está en la etapa MEM (<code>mem_result</code>). Otros diseños guardan por separado el dato de la ALU y el de la memoria y eligen en WB.</li>
-        <li><code>wb_halt</code> se asigna directamente a la salida <code>o_halt</code> del core (<code>assign o_halt = wb_halt</code>).</li>
-        <li><code>wb_result</code> alimenta tres lugares: el puerto de escritura del regfile, el camino "01" de los muxes de forwarding y la palabra 20 del mapa de debug.</li>
-        <li><code>wb_reg_write</code> se combina con <code>en</code> para formar el <code>we</code> del regfile, de modo que si el CPU está pausado no se escribe nada.</li>
+        <li>Un solo campo de datos, <code>wb_result</code>, porque el resultado ya se eligió en MEM.</li>
+        <li><code>wb_result</code> va al regfile, al camino <code>01</code> del forwarding y al mapa de debug. <code>wb_halt</code> es directamente <code>o_halt</code>.</li>
+        <li>El <code>we</code> del regfile es <code>wb_reg_write &amp; en</code>: con el CPU pausado no se escribe.</li>
       </ul>`,
     whyThisChoice: `
-      <p>Dejar el mux de resultado en MEM hace que este registro sea mínimo y que el forwarding reutilice <code>mem_result</code> sin un mux adicional, a cambio de alargar la etapa MEM (lectura de dmem + mux). La alternativa <b>mux en WB</b> (diseños de libro de texto) mueve la selección después del registro: MEM es más corta pero hay que duplicar el mux para forward y guardar más bits acá. Otras variantes: <b>dos puertos de escritura</b> (superescalares) y <b>retiro con ROB</b> (fuera de orden), donde esta etapa deja de ser una escritura directa.</p>
-      <p>En un procesador con <b>menos etapas</b> el write-back se fusiona con la etapa anterior; en uno con <b>más</b> hay varias etapas de retiro. En este diseño, 5 etapas es lo que hace al diseño explicable en un diagrama.</p>`,
+      <p>Es el registro más chico (39 bits) porque el mux de resultado quedó en MEM. Ver el mux de write-back para el costo de esa decisión.</p>`,
   },
   refs: [
     { label: 'mem_wb_reg', sym: 'module:mem_wb_reg' },

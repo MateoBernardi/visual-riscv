@@ -16,17 +16,13 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>El receptor necesita dos contadores y un registro de desplazamiento. Un contador que "puede limpiarse, incrementarse o quedarse igual" se escribe como un mux con prioridad: <code>clear ? 0 : inc ? valor + 1 : valor</code>. El tercer caso, "quedarse igual", es lo que hace que un registro recuerde. La FSM no calcula nada: solo levanta <code>clear</code> o <code>inc</code> y este módulo hace la cuenta.</p>
-      <p>El registro de desplazamiento se arma con concatenación: <code>{i_rx, i_byte[7:1]}</code> descarta el bit 0 (el más viejo) y mete el bit nuevo por la izquierda. Aplicado ocho veces, el primer bit recibido (el LSB, que viaja primero en una UART) termina en la posición 0.</p>
-      <p>Por último, el módulo calcula tres comparaciones sobre los contadores y se las devuelve a la FSM: así la FSM se limita a decidir con bits, sin comparar números. Estas comparaciones salen de los parámetros (<code>N_TICKS</code>, <code>NB_DATA</code>), por lo que cambiar el sobremuestreo o el largo del dato no obliga a tocar la FSM.</p>`,
+      <p>Dos contadores (limpiar, incrementar o mantener) y un desplazador <code>{i_rx, byte[7:1]}</code>. Además devuelve a la FSM las comparaciones ya hechas, así la FSM decide con bits.</p>`,
     inThisProject: `
-      <p>${L('o_s_next')} = <code>s_clear ? 0 : s_inc ? s + 1 : s</code> (4 bits: <code>$clog2(N_TICKS)</code>); ${L('o_n_next')} igual para <code>n</code> (3 bits: <code>$clog2(NB_DATA)</code>); ${L('o_byte_next')} = <code>i_shift ? {i_rx, i_byte[NB_DATA-1:1]} : i_byte</code>.</p>
-      <p>Banderas: ${L('o_s_half')} = <code>(i_s == HALF_TICK)</code> con ${L('HALF_TICK')} = <code>(N_TICKS / 2) - 1</code> = 7; ${L('o_s_last')} = <code>(i_s == N_TICKS - 1)</code> = 15; ${L('o_n_last')} = <code>(i_n == NB_DATA - 1)</code> = 7. Que <code>HALF_TICK</code> valga 7 (y no 8) tiene que ver con que <code>s</code> arranca en 0: cuando <code>s == 7</code> ya se contaron 8 ticks.</p>
-      <p>Como los contadores son de 4 y 3 bits, desbordan naturalmente (15 + 1 = 0); la FSM los limpia explícitamente antes de que eso importe.</p>`,
+      <ul>
+        <li>${L('HALF_TICK')} = <code>N_TICKS/2 - 1</code> = 7, porque <code>s</code> arranca en 0: con <code>s == 7</code> ya pasaron 8 ticks.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Parametrizar umbrales.</b> Los valores 7, 15 y 7 se derivan de <code>N_TICKS</code> y <code>NB_DATA</code> en lugar de ser literales: se puede pasar a 8N1 con 8 ticks o a 7 bits de datos sin reescribir la FSM. La versión original del proyecto tenía 16 y 8 fijos.</p>
-      <p><b>Comparar contra una constante vs. contar hacia atrás.</b> Un contador descendente con detección de cero ahorra un comparador, pero hace menos obvia la relación con "mitad del bit". Acá la claridad pesa más que los LUTs.</p>
-      <p><b>Desplazar a la derecha vs. indexar por <code>n</code>.</b> Con desplazamiento, el registro se escribe completo con una concatenación; con indexación (<code>byte[n] &lt;= i_rx</code>) haría falta un decodificador de escritura por bit.</p>`,
+      <p>Los umbrales salen de <code>N_TICKS</code> y <code>NB_DATA</code>, no son literales: se puede cambiar el sobremuestreo o el largo del dato sin tocar la FSM. Desplazar en vez de escribir <code>byte[n]</code> evita un decodificador por bit.</p>`,
   },
   refs: [
     { label: 'HALF_TICK', sym: 'HALF_TICK' },

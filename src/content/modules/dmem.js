@@ -30,24 +30,17 @@ export default {
   kind: 'mixed',
   explain: {
     firstPrinciples: `
-      <p>Los registros son pocos y rápidos; los programas necesitan mucho más espacio para arreglos, pilas y variables. Para eso existe la memoria de datos: una gran tabla de bytes a la que se accede con una dirección. RISC-V es una arquitectura <b>load/store</b>: solo las instrucciones <code>lw/lh/lb</code> y <code>sw/sh/sb</code> la tocan, el resto trabaja con registros.</p>
-      <p>El problema de diseño es que la memoria se organiza físicamente en palabras de 32 bits (más ancho = más datos por acceso), pero el programa quiere leer y escribir bytes y medias palabras. Para <i>escribir</i> un solo byte sin pisar los otros tres, la memoria se divide en cuatro <b>carriles de byte</b> independientes (lane 0 a 3), cada uno con su propia señal de habilitación (byte enable). Hay que además <b>mover</b> el dato al carril correcto: si guardás un byte en la dirección terminada en <code>01</code>, tiene que caer en el carril 1.</p>
-      <p>Para <i>leer</i> el proceso es el inverso: se lee la palabra completa de los cuatro carriles, se elige el byte o la media palabra que corresponde según los bits bajos de la dirección y se la <b>extiende</b> a 32 bits (con signo en LB/LH, con ceros en LBU/LHU).</p>
-      <p>Queda una cuestión de contrato: ¿qué pasa con un acceso desalineado (un <code>lw</code> a una dirección que no es múltiplo de 4)? La especificación permite que el hardware lo soporte con varios accesos, o que lo trate como excepción. Un procesador sin excepciones tiene que elegir otra cosa. Además se necesita un acceso de solo lectura aparte para que la debug unit pueda volcar el contenido sin interferir.</p>`,
+      <p>Los programas necesitan mucho más espacio que 32 registros. La memoria está organizada en palabras, pero el programa lee y escribe bytes y medias palabras: para escribir un byte sin pisar los otros se divide en cuatro <b>carriles</b> con su propio enable, y al leer se elige el byte o la media palabra y se extiende a 32 bits.</p>`,
     inThisProject: `
-      <p>Es ${g('module:dmem', 'dmem')} (instancia <code>u_dmem</code>), con <code>DEPTH = 256</code> palabras (1 KB). Cuatro arreglos ${g('lane0')}, ${g('lane1')}, ${g('lane2')} y ${g('lane3')} de bytes: esta forma permite que Vivado la infiera como RAM distribuida (un arreglo plano de bytes con escrituras desalineadas se convierte en 8K flip-flops).</p>
       <ul>
-        <li><b>Dirección</b>: ${g('widx')} <code>= addr[AW+1:2]</code> (AW = 8, así que <code>addr[9:2]</code>) y ${g('boff')} <code>= addr[1:0]</code>. Una dirección fuera de la dmem no llega acá: trap_unit la detecta en EX y el acceso se anula (trap).</li>
-        <li><b>Byte enables</b> (${g('be')}): <code>case (funct3[1:0])</code>: SB → <code>4'b0001 &lt;&lt; boff</code>; SH → <code>boff[1] ? 4'b1100 : 4'b0011</code>; SW (y cualquier otro) → <code>4'b1111</code>.</li>
-        <li><b>Dato por carril</b>: ${g('d0')}…${g('d3')} reordenan <code>wdata</code> según ${g('sb')} y ${g('sw')}, de forma que SB y SH ponen el dato en todos los carriles que podrían necesitarlo y el byte enable elige el correcto.</li>
-        <li><b>Compuerta de escritura</b>: solo escribe si <code>we &amp;&amp; funct3[2] == 0 &amp;&amp; funct3[1:0] != 2'b11</code>, o sea para funct3 = 000, 001 o 010. Desde el pipeline <code>we = mem_mem_write &amp; en</code>.</li>
-        <li><b>Lectura asincrónica</b>: ${g('word')} <code>= {lane3, lane2, lane1, lane0}[widx]</code>; ${g('b')} elige el byte con <code>word[boff*8 +: 8]</code> y ${g('h')} la media palabra con <code>boff[1]</code>. El <code>case (funct3)</code> final extiende: LB, LH con signo; LW; LBU, LHU con ceros; cualquier otro funct3 da 0.</li>
-        <li><b>Puerto de debug</b>: ${g('dbg_data')} lee una palabra completa por índice, sin pasar por funct3.</li>
-      </ul>
-      <p>Los accesos desalineados tampoco llegan: son un trap en EX, así que la dmem solo ve accesos alineados. La dmem no recibe la señal <code>mem_read</code>: siempre calcula <code>rdata</code>, y el pipeline la usa únicamente si <code>wb_sel = 01</code>.</p>`,
+        <li>256 palabras (1 KB) en cuatro arreglos ${g('lane0')}…${g('lane3')}: así Vivado la infiere como RAM distribuida y no como 8K flip-flops.</li>
+        <li>Un acceso desalineado o fuera de rango no llega acá: trap_unit lo detecta en EX y lo anula.</li>
+        <li>No recibe <code>mem_read</code>: siempre calcula <code>rdata</code> y el pipeline lo usa solo si <code>wb_sel = 01</code>.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Los carriles de byte con lectura asincrónica dan un acceso de un ciclo y mapean a LUTRAM. La alternativa más común en FPGA es la <b>BRAM síncrona</b>: más capacidad, pero el dato llega un ciclo después, lo que agrega una etapa o un load-use de 2 ciclos (VexRiscv, Rocket). Otras: <b>memoria unificada Von Neumann</b> (un solo puerto; IF y MEM compiten por él), <b>cachés L1 + memoria externa</b> para GBs de memoria (Cortex-A, BOOM), <b>MMIO + TCM</b> con un decodificador de direcciones para periféricos de latencia fija (Cortex-M, Ibex), y soporte de <b>acceso desalineado</b> con trap o con dos accesos.</p>
-      <p><b>Desalineado = trap.</b> La versión anterior alineaba en silencio: más barato, pero un bug de alineación daba resultados incorrectos sin avisar, y riscv-formal lo marcó como violación de la ISA. Con el trap, el error se ve y se informa la dirección.</p><p>Como la lectura es combinacional, el dato del load existe al final de MEM; adelantarlo desde ahí ponía la dmem en el camino crítico, por eso se adelanta desde WB y el load-use cuesta un ciclo.</p>`,
+      <p><b>Lectura asincrónica</b> (LUTRAM): un acceso por ciclo, sin la etapa extra que exigiría una BRAM síncrona.</p>
+      <p><b>Desalineado = trap.</b> Antes se alineaba en silencio: más barato, pero un bug de alineación daba resultados mal sin avisar, y riscv-formal lo marcó como violación de la ISA. Con el trap, el error se ve y queda la dirección.</p>
+      <p>El dato del load existe recién al final de MEM; adelantarlo desde ahí ponía la dmem en el camino crítico. Por eso se adelanta desde WB y el load-use cuesta un ciclo.</p>`,
   },
   refs: [
     { label: 'dmem', sym: 'module:dmem' },

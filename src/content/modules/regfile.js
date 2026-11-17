@@ -22,21 +22,16 @@ export default {
   kind: 'mixed',
   explain: {
     firstPrinciples: `
-      <p>La ALU necesita dos operandos por ciclo, pero una instrucción RISC-V solo tiene 5 bits para nombrar cada registro fuente: no puede traer los valores, solo sus <i>números</i>. Hace falta un lugar donde guardar los valores de los 32 registros de la arquitectura y que, dado un número, entregue el valor: una memoria pequeña y muy rápida, con <b>varios puertos</b>, porque en un mismo ciclo hay que leer dos registros (rs1 y rs2) y, a la vez, escribir el resultado de otra instrucción (rd).</p>
-      <p>Esa memoria no puede tener la latencia de una RAM grande: sus lecturas están en el camino crítico entre la decodificación y la ALU. Por eso se implementa con flip-flops o con RAM distribuida (LUTRAM) y lecturas <b>asincrónicas</b>: el dato aparece en cuanto la dirección es estable.</p>
-      <p>Hay dos reglas de la ISA que se vuelven hardware. La primera: el registro <code>x0</code> vale siempre cero y no se puede modificar; leerlo tiene que dar 0 y escribirlo tiene que ser inocuo. La segunda es un problema de tiempo: si WB escribe x5 en el mismo ciclo en que ID lee x5 (para otra instrucción), la lectura vería el valor viejo. Las soluciones clásicas son escribir en la primera mitad del ciclo y leer en la segunda, o hacer un <b>bypass interno</b> (write-through): si la dirección leída coincide con la escrita, el banco entrega directamente el dato que está entrando.</p>
-      <p>Finalmente, en un sistema con debug hace falta un tercer acceso de lectura para volcar el estado a la PC sin interferir con los dos puertos de la CPU.</p>`,
+      <p>La instrucción solo trae los <i>números</i> de los registros; el banco entrega sus valores. Tiene que leer dos y escribir uno por ciclo, rápido, porque está entre ID y la ALU. Dos reglas de la ISA se vuelven hardware: <code>x0</code> siempre vale 0, y si WB escribe el registro que ID lee en el mismo ciclo, la lectura tiene que ver el valor nuevo.</p>`,
     inThisProject: `
-      <p>Es ${g('module:regfile', 'regfile')} (instancia <code>u_rf</code>, parametrizada con <code>BYPASS=1</code> desde riscv_pipeline.v). Contiene <code>reg [31:0] regs [0:31]</code>:</p>
       <ul>
-        <li><b>Escritura</b> (síncrona): si <code>rst</code>, borra x1..x31 (por eso el reset de la debug unit limpia los registros); si no, <code>if (we &amp;&amp; waddr != 0) regs[waddr] &lt;= wdata</code>. Desde el pipeline <code>we = wb_reg_write &amp; en</code>, así que con el CPU pausado no se escribe. Incluso <code>regs[0]</code> nunca se modifica.</li>
-        <li><b>Lecturas</b> (asincrónicas): ${g('rdata1')} y ${g('rdata2')} son asignaciones con dos ternarios encadenados: si <code>raddr == 0</code> entregan 0; si no, con <code>BYPASS</code>, <code>wr</code> (escritura efectiva: ${g('wr')} = <code>we &amp;&amp; waddr != 0</code>) y <code>waddr == raddr</code> entregan <code>wdata</code> (write-through); si no, <code>regs[raddr]</code>.</li>
-        <li><b>Puerto de debug</b>: ${g('dbg_data')} <code>= regs[dbg_addr]</code>, sin chequeo de x0 (el mux de debug en riscv_pipeline.v fuerza el 0 de x0).</li>
-      </ul>
-      <p>El parámetro BYPASS existe porque el banco también podría usarse en un procesador monociclo; allí el write-through formaría un lazo combinacional. En el pipeline el bypass resuelve la dependencia a distancia 3 (instrucción en WB, consumidor en ID); a distancias 1 y 2 interviene el forwarding de EX. El bypass es combinacional desde <code>wdata</code>: no necesita esperar al flanco.</p>`,
+        <li>${g('wr')} <code>= we &amp;&amp; waddr != 0</code>: escribir x0 no tiene efecto, y leerlo da 0.</li>
+        <li>El reset borra x1..x31: por eso <code>X</code> de la debug unit limpia los registros.</li>
+        <li><code>BYPASS</code> es un parámetro porque en un monociclo el write-through formaría un lazo combinacional.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Con lecturas asincrónicas más bypass interno, el banco resuelve el conflicto "WB escribe lo que ID lee" sin tocar el reloj ni la duración de las fases. La alternativa clásica, <b>escribir en la primera mitad del ciclo y leer en la segunda</b> (MIPS R2000), no necesita comparadores, pero cada mitad dispone solo de medio ciclo y complica el timing. Otras opciones: <b>BRAM</b> en vez de LUTRAM (ahorra LUTs en bancos grandes, pero la lectura es sincrónica y agrega latencia o más bypass), <b>RV32E</b> (16 registros, mitad de área, no compatible con el ABI estándar), <b>más puertos</b> para un procesador superescalar (el área crece casi cuadráticamente) o <b>ventanas de registros</b> (SPARC), que optimizan las llamadas a función a costa de un banco enorme y trampas de overflow.</p>
-      <p>En esta implementación 32×32 bits caben cómodos en LUTRAM de la Artix-7 y el reset puede borrar todo en un ciclo porque son flip-flops, algo que una BRAM no permitiría.</p>`,
+      <p><b>Bypass interno</b> (si se lee lo que se está escribiendo, se entrega <code>wdata</code>): resuelve la dependencia a distancia 3 sin partir el ciclo en mitades, que es lo que hace el MIPS de libro y aprieta el timing.</p>
+      <p><b>Flip-flops/LUTRAM y no BRAM</b>: 32×32 bits entran cómodos, la lectura es inmediata y el reset puede borrar todo en un ciclo, cosa que una BRAM no permite.</p>`,
   },
   refs: [
     { label: 'regfile', sym: 'module:regfile' },

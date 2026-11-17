@@ -16,7 +16,7 @@ const REGS = [
   ['o_imem_we', 1, 'Write-enable de imem, registrado: la escritura llega un ciclo después de la decisión.', null],
   ['o_imem_addr', 10, 'Dirección en bytes de imem (IMEM_ADDR_W bits).', null],
   ['o_imem_data', 8, 'Byte a escribir en imem.', null],
-  ['o_dbg_addr', 16, 'Dirección de la palabra de debug que se está volcando (0..85).', null],
+  ['o_dbg_addr', 16, 'Dirección de la palabra de debug que se está volcando (0..88).', null],
   ['o_dbg_word', 32, 'Palabra capturada, que se va desplazando byte a byte hacia TX.', null],
   ['o_byte_idx', 2, 'Cuál de los 4 bytes de la palabra se está enviando.', null],
 ];
@@ -55,17 +55,15 @@ export default {
   kind: 'seq',
   explain: {
     firstPrinciples: `
-      <p>La lógica combinacional no recuerda nada: si cambian sus entradas, cambia su salida. Para que una FSM recuerde "en qué paso estoy" o para que un contador conserve su cuenta, hace falta <b>memoria</b>: flip-flops que copian su entrada en cada flanco del reloj y la mantienen hasta el siguiente. Un conjunto de flip-flops que guardan un valor se llama <b>registro</b>.</p>
-      <p>En el patrón "próximo valor / valor actual", la lógica combinacional calcula <code>x_next</code> a partir de <code>x</code> y de las entradas, y un bloque secuencial hace <code>x &lt;= x_next</code> en cada flanco. Esto da al diseño un ritmo claro: dentro de un ciclo todo es cálculo, y el cambio de estado ocurre de golpe en el flanco. Como la lógica nunca escribe el registro directamente, no hay lazos combinacionales.</p>
-      <p>Hay que decidir además qué pasa al arrancar. Un registro sin reset arranca en un valor desconocido; con un <b>reset sincrónico</b>, el flanco de reloj con <code>i_reset = 1</code> fuerza un valor conocido. Acá todos se reinician a cero y esa elección está pensada: el valor 0 de <code>o_state</code> es IDLE, así la máquina siempre arranca esperando un comando.</p>`,
+      <p>Lo combinacional no recuerda nada. En el patrón próximo valor / valor actual, la lógica calcula <code>x_next</code> y un bloque secuencial hace <code>x &lt;= x_next</code> en cada flanco. Con reset a cero, el estado 0 es IDLE: la máquina siempre arranca esperando un comando.</p>`,
     inThisProject: `
-      <p>Un único <code>always @(posedge i_clk)</code>: si ${L('i_reset')} todos los registros valen 0 (incluido ${L('o_state')} = IDLE y ${L('o_imem_we')} = 0, para no escribir la imem al arrancar); si no, cada uno toma su valor <code>*_next</code>.</p>
-      <p>Hay 14 registros: la FSM (<code>o_state</code>, 4 bits), tres de modo (<code>o_run</code>, <code>o_step</code>, <code>o_cpu_rst</code>), y datos de la carga (<code>o_len</code> 16, <code>o_byte_cnt</code> 18, <code>o_overflow</code>, <code>o_reply</code> 8, y el puerto de imem registrado <code>o_imem_we / o_imem_addr / o_imem_data</code>) y del dump (<code>o_dbg_addr</code> 16, <code>o_dbg_word</code> 32, <code>o_byte_idx</code> 2).</p>
-      <p><code>o_step</code> y <code>o_cpu_rst</code> son pulsos de un ciclo: la FSM los pone en 0 por defecto, así que al ciclo siguiente vuelven solos a 0. <code>o_run</code>, en cambio, se mantiene hasta que la FSM lo baje. El puerto hacia la imem y <code>o_dbg_addr</code> salen directo de estos registros, por eso son estables todo el ciclo.</p>`,
+      <ul>
+        <li>14 registros: el estado, el modo (<code>run</code>, <code>step</code>, <code>cpu_rst</code>), la carga y el volcado.</li>
+        <li><code>o_step</code> y <code>o_cpu_rst</code> son pulsos (la FSM los pone en 0 por defecto); <code>o_run</code> se mantiene.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Reset sincrónico vs. asincrónico.</b> El sincrónico no necesita una conexión especial en la FPGA y deja el timing más sencillo; el costo es que se necesita reloj corriendo para que el reset surta efecto, algo que acá siempre ocurre.</p>
-      <p><b>Registrar el puerto de imem.</b> Si <code>imem_we/addr/data</code> salieran directo de la FSM (combinacional), el write-enable podría tener glitches y el camino hacia la memoria sumaría retardo. Registrarlos agrega un ciclo de latencia pero garantiza señales limpias; la FSM lo compensa porque se mueve a la velocidad de la UART, muy inferior al reloj.</p>
-      <p><b>Un módulo solo con registros.</b> Parece trivial, pero es la forma de dejar visible en un solo lugar <i>todo lo que la debug unit recuerda</i> (estado, modo, datos) y de que todo el resto sea combinacional sin latches.</p>`,
+      <p><b>El puerto de la imem sale de registros</b>: el write-enable no puede tener glitches. El ciclo de latencia no importa, porque la FSM va al ritmo de la UART.</p>
+      <p>Un módulo con solo registros deja en un lugar todo lo que la debug unit recuerda; el resto es combinacional.</p>`,
   },
   refs: [{ label: 'always (reset)', sym: 'o_state' }, { label: 'o_imem_we', sym: 'o_imem_we' }],
   grid: [12, 8],

@@ -62,22 +62,15 @@ export default {
   kind: 'seq',
   explain: {
     firstPrinciples: `
-      <p>La ALU produce su resultado hacia el final del ciclo de EX. Si la etapa de memoria tomara ese valor directamente de la salida de la ALU, sería la salida de lo que la ALU calcula <i>en ese instante</i> para la instrucción que ya entró a EX, no para la que está en MEM. Hacen falta flip-flops que retengan el resultado durante el ciclo siguiente.</p>
-      <p>Como en todo registro de pipeline, la regla es que todo lo que el resto del camino necesite debe viajar con la instrucción. Desde EX en adelante ya no hace falta mucho de lo que había en ID/EX: los operandos originales, el control de ALU, branch y jump ya se usaron. Queda solo lo que MEM y WB van a consumir: el resultado de la ALU (que es la dirección para loads y stores), el dato a guardar en un store, el destino y las banderas de control restantes.</p>
-      <p>Este registro tiene una particularidad: su contenido es una de las fuentes del <b>forwarding</b>. Un ciclo después de calcularse, el resultado de una instrucción está acá, y la siguiente puede necesitarlo ya mismo; para eso los índices (<code>rd</code>) y el bit <code>reg_write</code> también son visibles para la unidad de forwarding.</p>
-      <p>Finalmente, no necesita lógica de flush: si una instrucción del camino equivocado fue anulada, ya se convirtió en burbuja en ID/EX, y al pasar por EX produce un EX/MEM inofensivo (todo en 0).</p>`,
+      <p>Retiene lo que EX produjo para que MEM y WB lo usen el ciclo siguiente. A esta altura ya no hace falta casi nada de ID/EX: queda el resultado (que es la dirección en loads y stores), el dato del store, rd y el control restante. Su contenido es también la primera fuente de forwarding.</p>`,
     inThisProject: `
-      <p>Es ${g('module:ex_mem_reg', 'ex_mem_reg')}, instanciado como <code>u_ex_mem</code>. Los campos de control son <code>reg_write, mem_read, mem_write, halt, wb_sel[1:0]</code> y los de datos <code>alu_out, rdata2, pc4, imm, rd, funct3</code>. Las entradas llevan prefijo <code>ex_</code> y las salidas <code>mem_</code>.</p>
-      <p>La prioridad es la más simple: <code>if (rst)</code> todo en 0; <code>else if (en)</code> carga; si no, retiene. Sin <code>flush</code> ni <code>stall</code>.</p>
       <ul>
-        <li>El dato de un store (<code>ex_rdata2</code>) se conecta desde riscv_pipeline.v a <code>fwd_b_val</code>, o sea ya con forwarding. Si el store estuviera usando <code>ex_rdata2</code> del regfile, <code>sw x2, 0(x1)</code> guardaría un valor viejo cuando x2 acaba de calcularse.</li>
-        <li>Se guarda <code>imm</code> solo para LUI, cuyo valor se escribe sin pasar por la ALU. Y <code>pc4</code> para JAL/JALR, calculado en ID.</li>
-        <li><code>mem_read</code> existe en el registro pero la dmem no lo recibe: la lectura es combinacional y siempre calcula <code>rdata</code> según <code>funct3</code>; solo se usa si <code>wb_sel = 01</code>.</li>
-        <li>No se guardan <code>branch</code>, <code>jump</code>, <code>alu_src</code>, <code>alu_op</code>, <code>is_jalr</code>, <code>is_auipc</code>, <code>rs1</code> ni <code>rs2</code>: ya no se usan después de EX.</li>
+        <li>Sin flush ni stall: una instrucción anulada ya llega como burbuja desde ID/EX.</li>
+        <li>El dato del store viene de <code>fwd_b_val</code>, ya con forwarding; si no, <code>sw</code> guardaría un valor viejo.</li>
+        <li><code>imm</code> viaja solo para LUI y <code>pc4</code> para JAL/JALR.</li>
       </ul>`,
     whyThisChoice: `
-      <p>Guardar solamente lo que se sigue necesitando es lo que mantiene este registro en 142 bits en vez de repetir los 190 de ID/EX. La alternativa de <b>guardar más</b> (por ejemplo, el PC de cada instrucción para facilitar la depuración) facilitaría la interfaz pero costaría flip-flops. El hecho de que no haya flush acá es una decisión que depende de dónde se resuelven los saltos: si se resolvieran en MEM, habría que anular también esta etapa.</p>
-      <p>En una implementación con <b>menos etapas</b> (2-3, como Ibex) este registro desaparece y la dmem se accede en la misma etapa que la ALU. En una con <b>más etapas</b> (superpipelining, como Pentium 4) se parte la memoria en varios ciclos. En una <b>fuera de orden</b> el resultado se escribiría en un ROB.</p>`,
+      <p>Guardar solo lo que se sigue usando lo deja en 142 bits contra los 190 de ID/EX. Que no necesite flush es consecuencia de resolver los saltos en EX: si se resolvieran en MEM, habría que anular también esta etapa.</p>`,
   },
   refs: [
     { label: 'ex_mem_reg', sym: 'module:ex_mem_reg' },

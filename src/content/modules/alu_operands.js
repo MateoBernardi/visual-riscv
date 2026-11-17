@@ -23,18 +23,15 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>La ALU es un circuito con dos entradas y una operación. Pero no todas las instrucciones usan los mismos dos números: <code>add x1,x2,x3</code> suma dos registros, <code>addi x1,x2,5</code> suma un registro y una constante que viene dentro de la propia instrucción, <code>lw</code> y <code>sw</code> suman un registro base más un desplazamiento, y <code>auipc</code> suma una constante al <i>PC</i>, no a un registro.</p>
-      <p>Para reutilizar una única ALU para todo, hay que decidir antes de la ALU qué dos números entran. Cada decisión de "esto o aquello" es un multiplexor, y el bit de selección sale del decodificador de control, que ya sabe de qué instrucción se trata.</p>`,
+      <p>Una sola ALU sirve a instrucciones que operan sobre cosas distintas: dos registros, registro y constante, PC y constante (AUIPC). Antes de la ALU, un mux por entrada elige qué número entra.</p>`,
     inThisProject: `
-      <p>Son dos asignaciones continuas con operador ternario, después del forwarding:</p>
       <ul>
-        <li>${g('alu_a')} <code>= ex_is_auipc ? ex_pc : fwd_a_val</code>. Solo AUIPC desvía el operando A al PC; <code>ex_is_auipc</code> se calcula en ID comparando el opcode (<code>id_is_auipc</code>) y viaja por ID/EX. LUI no pasa por la ALU: su resultado sale directo del inmediato por el mux <code>wb_sel</code>.</li>
-        <li>${g('alu_b')} <code>= ex_alu_src ? ex_imm : fwd_b_val</code>. <code>alu_src = 1</code> para I-type, loads, stores, JALR y AUIPC; vale 0 para R-type y branches (que comparan dos registros).</li>
-      </ul>
-      <p>Como el mux de forwarding está <i>antes</i>, un inmediato nunca se reenvía: <code>fwd_b_val</code> se calcula igual y se descarta. Esto es seguro aunque <code>forward_b</code> coincida por casualidad con bits del inmediato en I-type (ver quirk de comparar campos crudos), porque <code>alu_src</code> manda. El dato de un store sí usa <code>fwd_b_val</code> directamente, no <code>alu_b</code>, porque en un store <code>alu_b</code> es el offset.</p>`,
+        <li>${g('alu_a')}: solo AUIPC cambia el operando A por el PC.</li>
+        <li>${g('alu_b')}: el inmediato en I, loads, stores, JALR y AUIPC; un registro en R y branches.</li>
+        <li>Están después del forwarding: un forwarding falso sobre un inmediato se descarta solo. El dato del store sale de <code>fwd_b_val</code>, porque ahí <code>alu_b</code> es el offset.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Dos muxes 2:1 chicos dejan la ALU simple: sin ellos habría que tener sumadores separados para PC+imm, base+offset, etc. La alternativa es mover la lógica: <b>LUI vía ALU</b> (A=0, B=imm) eliminaría el camino <code>wb_sel = 11</code> pero obligaría a forzar A=0; <b>AUIPC con sumador propio</b> evitaría el mux A pero duplica hardware. En cores con más puertos o ejecución fuera de orden estos muxes se transforman en la red de bypass completa.</p>
-      <p>En este diseño la elección mantiene los muxes de selección fuera de la ALU, que queda como un módulo puramente aritmético.</p>`,
+      <p>Dos muxes 2:1 dejan la ALU como un bloque puramente aritmético y evitan sumadores aparte para base+offset o PC+imm. LUI no pasa por acá: sale del inmediato por <code>wb_sel</code>, así que no hace falta forzar A=0.</p>`,
   },
   refs: [
     { label: 'alu_a', sym: 'alu_a' },

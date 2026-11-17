@@ -16,17 +16,15 @@ export default {
   kind: 'fsm',
   explain: {
     firstPrinciples: `
-      <p>Una trama UART tiene una estructura fija en el tiempo: un bit de start, ocho bits de datos y un bit de stop. Para recibirla, el hardware tiene que "saber en qué parte de la trama está". Eso es lo que recuerda una máquina de estados. Cada bit tiene una duración de 16 ticks; la FSM no mide tiempo por sí misma, sino que consulta banderas del contador de ticks (<code>s_half</code>, <code>s_last</code>) y del contador de bits (<code>n_last</code>).</p>
-      <p>Separar la FSM del datapath tiene una ventaja: la FSM solo habla de "hacer algo" (<code>s_clear</code>, <code>s_inc</code>, <code>shift</code>), no de cómo se hace. Las salidas por defecto son 0 en cada ciclo; la FSM solo activa la que necesita, por lo que son pulsos de exactamente un ciclo.</p>
-      <p>Cuatro estados son suficientes, y 2 bits los codifican: <code>IDLE = 00</code>, <code>START = 01</code>, <code>DATA = 10</code>, <code>STOP = 11</code>. El código de IDLE es 0 porque es el valor de reset del registro de estado.</p>`,
+      <p>La trama tiene fases fijas (start, datos, stop) y la FSM recuerda en cuál está. No mide tiempo: consulta las banderas de los contadores (<code>s_half</code>, <code>s_last</code>, <code>n_last</code>) y solo pide acciones (<code>s_clear</code>, <code>s_inc</code>, <code>shift</code>).</p>`,
     inThisProject: `
-      <p>La FSM actúa solo sobre <code>i_tick</code>: en START, DATA y STOP no pasa nada entre ticks; en cada tick, o suma <code>s</code> o resuelve la transición. La única transición que <b>no</b> espera un tick es IDLE &rarr; START, que reacciona al flanco de bajada en cuanto se ve <code>~i_rx</code> (y limpia <code>s</code>, de modo que la cuenta de los 8 ticks al centro del bit comienza en el reloj en que se detectó el start).</p>
-      <p><b>Efecto sobre los datos.</b> El desplazamiento (<code>o_shift</code>) ocurre cuando <code>s == 15</code> en DATA: el bit se muestrea un bit-tiempo después del centro del start, o sea en el centro del bit de datos. En STOP, cuando <code>s == 15</code> la FSM vuelve a IDLE y reporta <code>o_rx_done = i_rx</code>: si la línea no está en 1 (stop inválido) el pulso no se emite y el byte se pierde.</p>
-      <p>El <code>default</code> del <code>case</code> (estado fuera de rango) manda a IDLE. Con 2 bits están los cuatro estados definidos, por lo que la rama solo existe por prolijidad y para evitar latches.</p>`,
+      <ul>
+        <li>Solo IDLE &rarr; START reacciona sin tick, apenas ve <code>~i_rx</code>; el resto avanza con <code>i_tick</code>.</li>
+        <li>El desplazamiento ocurre con <code>s == 15</code> en DATA, que es el centro del bit de datos.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Moore vs. Mealy.</b> Las salidas de control (<code>o_s_inc</code>, <code>o_shift</code>) dependen de <code>i_tick</code> y de las banderas, así que son Mealy: es lo natural cuando las acciones son "en el tick tal, hacé tal cosa". Una versión Moore pura necesitaría estados extra para cada acción puntual.</p>
-      <p><b>Codificación binaria vs. one-hot.</b> One-hot usaría 4 flip-flops en vez de 2 y simplificaría la lógica de próximo estado; para 4 estados la diferencia es irrelevante. Se eligió binario porque el código de IDLE tiene que ser 0 (reset).</p>
-      <p><b>Salir de STOP en el centro del bit.</b> Como la cuenta empezó en el centro del start, el contador llega a 15 en STOP justo en el centro del bit de stop (152 ticks = 9,5 bits desde el flanco). La FSM vuelve entonces a IDLE medio bit antes de que termine la trama: queda lista para detectar el siguiente start aunque el emisor sea un poco más rápido, y el stop se valida en el punto más estable del bit.</p>`,
+      <p><b>Salir de STOP en el centro del bit</b>: el stop se valida en su punto más estable y el receptor vuelve a IDLE medio bit antes de que termine la trama, listo para el próximo start aunque el emisor vaya un poco más rápido.</p>
+      <p>Salidas Mealy (dependen del tick), porque las acciones son "en el tick tal, hacé tal cosa"; en Moore haría falta un estado por acción. Codificación binaria con IDLE = 00, que es el valor de reset.</p>`,
   },
   refs: [
     { label: 'IDLE', sym: 'state:IDLE' },

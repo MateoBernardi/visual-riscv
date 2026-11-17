@@ -22,20 +22,15 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>Un pipeline no espera a saber si un salto se toma: sigue trayendo las instrucciones que están a continuación en memoria, apostando a que el salto no ocurre ("predecir no tomado"). Si el salto sí se toma, esas instrucciones eran del camino equivocado y <b>no deben tener efecto</b>: ni escribir un registro, ni escribir memoria, ni cambiar el PC.</p>
-      <p>No se las puede "sacar" del pipeline, solo neutralizar. Se las convierte en <b>burbujas</b>: instrucciones que ocupan la etapa pero no hacen nada, como un NOP. Descartar las instrucciones equivocadas se llama <b>flush</b>. Para saber cuántas hay que descartar basta contar cuántas entraron antes de conocer el resultado.</p>
-      <p>Si el salto se resuelve en EX, en el momento de decidir hay una instrucción en ID y otra recién traída en IF. Como los registros de pipeline se actualizan en el próximo flanco, hay que anular los dos registros que van a recibir esas instrucciones: IF/ID (la que se acaba de buscar) e ID/EX (la que está en ID). Así el costo es de 2 ciclos por salto tomado; si se resolviera en ID serían 1, y con un predictor que acierte, 0.</p>`,
+      <p>El pipeline sigue trayendo instrucciones apostando a que el salto no se toma. Si se toma, las que entraron después no deben tener efecto: se las convierte en burbujas. Con resolución en EX son dos, las que están en IF/ID e ID/EX.</p>`,
     inThisProject: `
-      <p>Es ${g('module:flush_unit', 'flush_unit')} (instancia <code>u_flush</code>) y es un <b>passthrough</b>: <code>assign flush_if_id = redirect</code> y <code>assign flush_id_ex = redirect</code>. Está separado para dejar explícita la intención y marcar el lugar donde agregar política (por ejemplo, un predictor) sin tocar riscv_pipeline.v.</p>
       <ul>
-        <li><code>redirect</code> viene de EX: <code>branch_taken | ex_jump</code>, o sea branch tomado, JAL o JALR. Los saltos no tomados no producen flush.</li>
-        <li>Lo que sale se llama <code>flush_if_id_r</code> y <code>flush_id_ex_r</code> en riscv_pipeline.v, donde se combinan con otras condiciones: <code>flush_if_id = flush_if_id_r | stop_fetch</code> y <code>flush_id_ex = flush_id_ex_r | stop_fetch | stall</code>. El halt y el load-use se resuelven fuera de esta unidad (ver la vista "control de flujo").</li>
-        <li>En IF/ID el flush carga un NOP (<code>0x13</code>) y PC = 0; en ID/EX, una burbuja con todo en cero. EX/MEM y MEM/WB no se tocan: contienen instrucciones <i>anteriores</i> al salto, que son correctas.</li>
-        <li>El flush solo se aplica con el CPU habilitado (<code>en</code>); con <code>en = 0</code> se ignora.</li>
+        <li>Es un passthrough: <code>flush_if_id = flush_id_ex = redirect</code>.</li>
+        <li>En riscv_pipeline.v se le suman el halt (<code>stop_fetch</code>) y, en ID/EX, el stall.</li>
+        <li>EX/MEM y MEM/WB no se tocan: tienen instrucciones anteriores al salto.</li>
       </ul>`,
     whyThisChoice: `
-      <p>Con "predecir no tomado" y resolución en EX no hace falta ningún hardware de recuperación: bastan estas dos señales, y la penalidad fija es de 2 ciclos. Otras estrategias: <b>predicción + checkpoint</b> (BOOM, P6) para especulación profunda, que exige restaurar un mapa de registros al fallar; la <b>predicación</b> (ARM, Itanium), que no vacía nada pero ocupa los slots; el <b>flush selectivo por bit de validez</b> (Ibex, Rocket), que no pone todo a cero sino que invalida; o <b>vaciar solo las señales de control</b> sin tocar los datos, lo que ahorra lógica de reset pero deja basura visible al depurar. En esta implementación se pone en cero todo el registro ID/EX, lo que simplifica la lectura del estado en la interfaz.</p>
-      <p>Que RISC-V no tenga delay slots (a diferencia de MIPS) es lo que obliga a descartar las instrucciones de esta forma.</p>`,
+      <p>Con "no tomado" y resolución en EX no hace falta hardware de recuperación: dos señales y 2 ciclos fijos por salto. Es un módulo aparte, aunque solo copie una señal, para marcar dónde iría la política si se agrega un predictor.</p>`,
   },
   refs: [
     { label: 'flush_unit', sym: 'module:flush_unit' },

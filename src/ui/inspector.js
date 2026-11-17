@@ -27,7 +27,7 @@ export function createInspector(root, cb = {}) {
   root.append(box);
   let key = null;
   let live = { rows: [], fsm: null, graph: null, focusLive: null, timer: null };
-  const openState = new Map([['Por qué esta elección', true]]);
+  const openState = new Map([['Por qué', true]]);
 
   function disposeLive() {
     if (live.timer) clearInterval(live.timer);
@@ -129,7 +129,6 @@ export function createInspector(root, cb = {}) {
   // ---------- Alternativas inline ----------
   function buildAlt(alt) {
     const wrap = h('div', { class: 'alt2' });
-    if (alt.current) wrap.append(h('div', { class: 'alt2-current' }, h('span', { class: 'eyebrow' }, 'Lo que tiene este proyecto'), h('div', { class: 'prose', html: alt.current })));
     const list = h('div', { class: 'alt2-list' });
     for (const o of alt.options || []) {
       list.append(h('article', { class: 'alt2-opt' },
@@ -306,9 +305,8 @@ export function createInspector(root, cb = {}) {
           const chips = h('div', { class: 'chips gh-chips' }, ext(githubUrl(o.file, `module:${o.module}`), `${o.file} · ${o.module} ${GH}`),
             ...o.refs.filter((r) => resolveSymbol(o.file, r.sym)).map((r) => ext(githubUrl(o.file, r.sym), `${r.label} ${GH}`)));
           return section(o.title, [h('p', { class: 'muted' }, o.lead),
-            ex.firstPrinciples ? h('div', { class: 'prose', html: ex.firstPrinciples }) : null,
-            ex.inThisProject ? h('div', { class: 'prose', html: ex.inThisProject }) : null,
-            ex.whyThisChoice ? h('div', { class: 'prose', html: ex.whyThisChoice }) : null, chips]);
+            ex.whyThisChoice ? h('div', { class: 'prose', html: ex.whyThisChoice }) : null,
+            ex.inThisProject ? h('div', { class: 'prose', html: ex.inThisProject }) : null, chips]);
         })));
   }
 
@@ -343,17 +341,17 @@ export function createInspector(root, cb = {}) {
     const ex = (view && view.explain) || null;
     if (!view && info && info.summary) body.append(h('div', { class: 'summary prose', html: info.summary }));
 
-    // primero el por qué; la teoría desde cero y el detalle del RTL quedan plegados
-    if (ex && ex.whyThisChoice) body.append(section('Por qué esta elección', h('div', { class: 'prose', html: ex.whyThisChoice })));
+    // primero el por qué; cómo está hecho y la teoría desde cero quedan plegados
+    if (ex && ex.whyThisChoice) body.append(section('Por qué', h('div', { class: 'prose', html: ex.whyThisChoice })));
     if (ex && ex.inThisProject) {
       const chips = h('div', { class: 'chips gh-chips' });
       if (view) {
         chips.append(ext(githubUrl(view.file, view.pseudo ? undefined : `module:${view.module}`), `${view.file}${view.pseudo ? '' : ' · ' + view.module} ${GH}`));
         for (const r of view.refs || []) chips.append(ext(githubUrl(view.file, r.sym), `${r.label} ${GH}`));
       }
-      body.append(section('En este proyecto', [h('div', { class: 'prose', html: ex.inThisProject }), chips]));
+      body.append(section('Cómo está hecho', [h('div', { class: 'prose', html: ex.inThisProject }), chips]));
     } else if (view) {
-      body.append(section('En este proyecto', h('div', { class: 'chips gh-chips' }, ext(fileUrl(view.file), `${view.file} ${GH}`))));
+      body.append(section('Cómo está hecho', h('div', { class: 'chips gh-chips' }, ext(fileUrl(view.file), `${view.file} ${GH}`))));
     }
     if (ex && ex.firstPrinciples) body.append(section('Desde cero', h('div', { class: 'prose', html: ex.firstPrinciples })));
     if (alt && ((alt.options && alt.options.length) || alt.current)) {

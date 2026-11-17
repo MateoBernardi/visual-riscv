@@ -22,23 +22,15 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>Todo programa termina reduciéndose a unas pocas operaciones sobre números: sumar, restar, operaciones bit a bit (AND, OR, XOR), desplazar bits y comparar. En lugar de tener un circuito distinto por instrucción, se construye una única <b>unidad aritmético-lógica</b>: un circuito combinacional con dos entradas de datos, un código que dice qué operación hacer y una salida.</p>
-      <p>La suma es la operación más importante. No solo implementa ADD: las direcciones de loads y stores son <code>base + offset</code>, el destino de JALR es <code>rs1 + imm</code>, y una resta (sumar el complemento a dos) sirve para comparar: si <code>a − b</code> da cero, son iguales. Por eso muchas instrucciones "distintas" comparten el mismo hardware con códigos diferentes.</p>
-      <p>Además del resultado, es habitual que la ALU entregue <b>banderas</b>: si el resultado es cero, si hubo desbordamiento con signo, o si <code>a &lt; b</code>. Con esas banderas una unidad separada puede decidir un salto condicional sin repetir la comparación.</p>
-      <p>Un aspecto sutil es el de los desplazamientos: en RV32I solo importan los 5 bits bajos de la cantidad a desplazar, porque no tiene sentido desplazar 32 o más lugares en un registro de 32 bits. Y hay dos clases de desplazamiento a la derecha: lógico (rellena con ceros) y aritmético (replica el signo).</p>`,
+      <p>Una ALU hace todas las operaciones con un mismo circuito y un código de operación. La suma es la estrella: también calcula direcciones y, restando, compara. Además entrega banderas (cero, menor) para que otra unidad decida un salto sin repetir la comparación.</p>`,
     inThisProject: `
-      <p>Es ${g('module:alu_tp1', 'alu_tp1')} (el nombre viene del TP1 y fue adaptado a RV32I), con parámetros <code>NB_DATA = 32</code> y <code>NB_OP = 4</code>. Es puramente combinacional y los códigos de operación vienen de <code>alu_ops.vh</code>: ADD 0000, SUB 0001, AND 0010, OR 0011, XOR 0100, SLT 0101, SLTU 0110, SLL 0111, SRL 1000, SRA 1001 y NOR 1010 (este último no lo genera el decodificador).</p>
       <ul>
-        <li>${g('alu_result')}: <code>case (i_data_op)</code> dentro de un <code>always @(*)</code>; el <code>default</code> y cualquier código no definido dan 0.</li>
-        <li>${g('shamt')} <code>= i_data_b[NB_SH-1:0]</code>: solo los 5 bits bajos de B, como pide RV32I. Esto es lo que permite que SRAI (cuyo inmediato lleva <code>0100000</code> en los bits altos) funcione bien.</li>
-        <li>${g('o_lt')} y ${g('o_ltu')} se calculan <b>siempre</b>, sin depender de <code>i_data_op</code>: la primera compara con signo (los puertos están declarados <code>signed</code>), la segunda usa <code>$unsigned</code>. Las usan SLT/SLTU y branch_unit (BLT/BGE/BLTU/BGEU).</li>
-        <li>${g('o_z')} <code>= (alu_result == 0)</code>: el cero se evalúa sobre el resultado final. En un branch la ALU hace SUB, de modo que <code>zero</code> significa "rs1 == rs2".</li>
-        <li>${g('o_o')}: overflow con signo, solo definido para ADD y SUB; no lo usa ninguna instrucción, pero se vuelca en el mapa de debug (bit 6 de la palabra 13).</li>
-      </ul>
-      <p>Para las instrucciones que no pasan por la ALU (LUI, JAL) el resultado de la ALU simplemente se ignora: el valor sale de <code>wb_sel</code> en MEM.</p>`,
+        <li>${g('shamt')} usa solo los 5 bits bajos de B: así SRAI funciona aunque su inmediato traiga <code>0100000</code> arriba.</li>
+        <li>${g('o_lt')} y ${g('o_ltu')} se calculan siempre; las usan SLT/SLTU y branch_unit. En un branch la ALU resta, así que ${g('o_z')} significa rs1 == rs2.</li>
+        <li>${g('o_o')} (overflow) no lo usa ninguna instrucción; solo aparece en el volcado.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>La ALU está descripta con operadores de Verilog (<code>+</code>, <code>-</code>, <code>&lt;&lt;</code>, <code>&gt;&gt;&gt;</code>) y es la herramienta de síntesis la que elige la estructura: en la Artix-7 el sumador usa la cadena de carry dedicada (CARRY4), mucho mejor que cualquier sumador hecho a mano con LUTs. Frente a un <b>ripple-carry explícito</b> (mínima área, retardo O(n)), un <b>carry-lookahead / carry-select</b> o un <b>Kogge-Stone</b> (retardo logarítmico a costa de área y cableado) el diseño elige no pensar en la implementación del sumador y confiar en el mapeo a carry chains.</p>
-      <p>Un <b>barrel shifter</b> (desplazar cualquier cantidad en un ciclo con 5 niveles de mux) es lo que sintetiza <code>&lt;&lt; shamt</code>; un shifter serial ahorraría área pero obligaría a instrucciones multiciclo (SERV, PicoRV32). Una <b>extensión M</b> añadiría multiplicador (usando los DSP48) y un divisor iterativo, que no existen acá. En esta implementación se calculan lt/ltu aunque no se pida una comparación: cuesta dos comparadores siempre activos, pero evita multiplexar la salida de branch_unit.</p>`,
+      <p>Está escrita con operadores de Verilog (<code>+</code>, <code>-</code>, <code>&gt;&gt;&gt;</code>) y la síntesis elige la estructura: en la Artix-7 el sumador usa la cadena de carry dedicada (CARRY4), mejor que cualquier sumador armado a mano con LUTs. Calcular lt/ltu siempre cuesta dos comparadores, pero evita multiplexarlos según la instrucción.</p>`,
   },
   refs: [
     { label: 'alu_tp1', sym: 'module:alu_tp1' },

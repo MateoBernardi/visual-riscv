@@ -23,22 +23,14 @@ export default {
   kind: 'mixed',
   explain: {
     firstPrinciples: `
-      <p>Al final de su camino, una instrucción que escribe un registro tiene que entregar <i>un</i> valor de 32 bits. Pero de dónde sale ese valor depende de qué instrucción es: una suma entrega el resultado de la ALU, un <code>lw</code> entrega lo que leyó de memoria, un <code>jal</code> entrega la dirección de retorno (PC+4) y un <code>lui</code> entrega su constante.</p>
-      <p>Como el banco de registros tiene un solo puerto de escritura, hace falta un multiplexor de cuatro entradas que elija cuál de esas cuatro fuentes es "el resultado". Y como el que sabe de qué instrucción se trata es el decodificador, el selector se genera en ID y viaja con la instrucción por el pipeline (<code>wb_sel</code>).</p>
-      <p>Dónde se coloca ese mux es una decisión de diseño. Cuanto antes se elige el valor, menos datos hay que acarrear por los registros siguientes, y además ese mismo valor ya sirve para el forwarding hacia EX.</p>`,
+      <p>Una instrucción que escribe un registro entrega un valor, pero sale de lugares distintos: la ALU (aritmética), la memoria (loads), PC+4 (JAL/JALR) o el inmediato (LUI). Un mux de cuatro entradas elige, con un selector que decide el control en ID y viaja con la instrucción.</p>`,
     inThisProject: `
-      <p>En este RTL el mux vive en <b>MEM</b>, no en WB. Es un <code>always @(*)</code> con un <code>case (mem_wb_sel)</code> que asigna ${g('mem_result_r')}, y luego <code>assign mem_result = mem_result_r</code>:</p>
       <ul>
-        <li><code>2'b00</code>: <code>mem_alu_out</code> (aritmética, AUIPC).</li>
-        <li><code>2'b01</code>: <code>mem_rdata</code> (loads, ya extendidos por la dmem).</li>
-        <li><code>2'b10</code>: <code>mem_pc4</code> (JAL/JALR, calculado en ID).</li>
-        <li><code>default</code> (<code>2'b11</code>): <code>mem_imm</code> (LUI).</li>
-      </ul>
-      <p>La salida ${g('mem_result')} tiene dos destinos: ${g('u_mem_wb')}, que la guarda como <code>wb_result</code>, y los muxes de forwarding de EX (camino "10"). Por eso MEM/WB guarda un único campo de datos de 32 bits y no hace falta un segundo mux en WB.</p>
-      <p>En WB, <code>wb_result</code>, <code>wb_rd</code> y <code>wb_reg_write</code> entran al puerto de escritura de ${g('u_rf')}. El enable de escritura del regfile es <code>wb_reg_write &amp; en</code>, y adentro el regfile ignora las escrituras a x0. Con <code>BYPASS=1</code>, esa misma escritura también se ve en las lecturas del mismo ciclo.</p>`,
+        <li><code>wb_sel</code>: <code>00</code> ALU, <code>01</code> dmem, <code>10</code> PC+4, <code>11</code> inmediato.</li>
+        <li>El mux está en MEM: ${g('mem_result')} va a ${g('u_mem_wb')} y, salvo el dato de la dmem, también al forwarding (<code>mem_fwd</code>).</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Elegir en MEM tiene dos ventajas: el forwarding reutiliza el mismo valor (sin mux extra en EX) y MEM/WB queda angosto. El precio es que el dato de un load atraviesa la dmem <i>y</i> el mux dentro de la etapa MEM, alargando el camino crítico de esa etapa.</p>
-      <p>Las alternativas: <b>mux en WB</b> (libro de Patterson-Hennessy) guarda ALU y dato de memoria por separado en MEM/WB y elige después, lo que acorta MEM pero obliga a duplicar el mux para el forwarding; <b>LUI vía ALU</b> (A=0, B=imm) saca la entrada "11" y deja un mux de 3 entradas; <b>dos puertos de escritura</b> y <b>retiro con ROB</b> pertenecen a diseños superescalares o fuera de orden, donde la escritura se difiere hasta retirar en orden.</p>`,
+      <p>Elegir en MEM deja MEM/WB angosto y hace que el forwarding use un valor ya resuelto, sin un mux propio en EX. El costo es que un load atraviesa la dmem y este mux dentro de la misma etapa. Por eso la entrada de la dmem no se reenvía desde MEM: así sale del camino crítico.</p>`,
   },
   refs: [
     { label: 'mem_result_r', sym: 'mem_result_r' },

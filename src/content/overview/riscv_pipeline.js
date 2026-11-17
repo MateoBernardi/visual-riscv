@@ -20,23 +20,17 @@ export default {
   kind: 'struct',
   explain: {
     firstPrinciples: `
-      <p>Una instrucción necesita varias cosas en secuencia: buscarla en memoria, decodificarla y leer los registros, calcular con la ALU, acceder a memoria y escribir el resultado. Si todo eso ocurre en un único ciclo, el período del reloj tiene que alcanzar para sumar los retardos de <b>todas</b> las etapas y gran parte del hardware está ocioso casi todo el tiempo (mientras la ALU calcula, la memoria de instrucciones no hace nada).</p>
-      <p>La idea del pipeline es la de una línea de montaje: se parte el camino en etapas de largo parecido y se pone un <b>registro</b> entre una etapa y la siguiente. Así, en cada flanco de clock entra una instrucción nueva y hay cinco instrucciones "en vuelo" a la vez. El período solo tiene que cubrir la etapa más lenta, no la suma.</p>
-      <p>El costo son los <b>hazards</b>: una instrucción puede necesitar un valor que la anterior todavía no escribió (dependencia de datos), y un salto cambia el PC cuando ya entraron instrucciones del camino equivocado (dependencia de control). Por eso un pipeline real necesita, además de las etapas, lógica para <b>reenviar</b> resultados (forwarding), <b>frenar</b> (stall) y <b>descartar</b> (flush).</p>`,
+      <p>Si cada instrucción hace todo en un ciclo, el período tiene que cubrir la suma de todos los retardos y casi todo el hardware está ocioso. Un pipeline pone un registro entre etapas: el período cubre solo la etapa más lenta y hay cinco instrucciones en vuelo. El precio son los <b>hazards</b> (un valor que todavía no se escribió, un salto que llega tarde), que obligan a reenviar, frenar y descartar.</p>`,
     inThisProject: `
-      <p>Este es el módulo ${g('module:riscv_pipeline', 'riscv_pipeline')} (instanciado como <code>u_cpu</code> desde <code>top_riscv</code>). Une los módulos de cada etapa con cuatro registros de pipeline: ${g('u_if_id')}, ${g('u_id_ex')}, ${g('u_ex_mem')} y ${g('u_mem_wb')}, todos definidos en <code>pipeline/regs/pipe_reg.v</code>.</p>
       <ul>
-        <li><b>IF</b>: el registro ${g('pc')} (con enable ${g('pc_en')}), el mux ${g('pc_next')} y la memoria ${g('u_imem')}.</li>
-        <li><b>ID</b>: ${g('u_ctrl')}, ${g('u_immgen')}, ${g('u_rf')} (con <code>BYPASS=1</code>) y ${g('u_hazard')}. El sumador ${g('id_pc4')} calcula PC+4 acá, en ID, y lo lleva hasta MEM para JAL/JALR.</li>
-        <li><b>EX</b>: ${g('u_fwd')} elige los muxes ${g('fwd_a_val')} / ${g('fwd_b_val')}; después ${g('alu_a')} / ${g('alu_b')} eligen PC o inmediato; ${g('u_alu')} y ${g('u_bu')} resuelven el salto. <code>redirect</code> se deriva de <code>branch_taken</code> y <code>ex_jump</code>.</li>
-        <li><b>MEM</b>: ${g('u_dmem')} y el mux ${g('mem_result_r')} (<code>mem_result</code>). El forwarding hacia EX usa ${g('mem_fwd')}, que es lo mismo salvo el dato de la dmem: un load se adelanta desde WB.</li>
-        <li><b>WB</b>: ${g('u_mem_wb')} guarda <code>wb_result</code> ya seleccionado y lo entrega al regfile.</li>
-      </ul>
-      <p>Las dependencias de control se resuelven en EX: un salto tomado o un jump anula las dos instrucciones siguientes (2 burbujas). Una instrucción que detiene el CPU (ECALL, EBREAK o un trap: ilegal, salto o acceso desalineado, fuera de memoria) actúa en EX: no escribe nada, ${g('halting_r')} y ${g('stop_fetch')} impiden que avance nada posterior, y <code>o_halt</code> sube cuando llega a WB. La causa queda en el mapa de debug.</p>
-      <p>Hacia afuera expone la interfaz con la debug unit: <code>i_rst</code> (reset sincrónico), <code>i_enable</code> (congela todo sin gatear el clock), el puerto de carga de la imem y el bus de debug combinacional ${g('o_dbg_data')} de 89 palabras.</p>`,
+        <li>Los cuatro registros (${g('u_if_id')}, ${g('u_id_ex')}, ${g('u_ex_mem')}, ${g('u_mem_wb')}) salen de <code>pipeline/regs/pipe_reg.v</code>.</li>
+        <li>Los saltos se resuelven en EX: un salto tomado anula las dos instrucciones siguientes.</li>
+        <li>ECALL, EBREAK o un trap actúan en EX: no escriben nada, ${g('halting_r')} y ${g('stop_fetch')} impiden que avance algo posterior y <code>o_halt</code> sube al llegar a WB. La causa queda en el mapa de debug.</li>
+        <li>El bus ${g('o_dbg_data')} expone 89 palabras de estado; el top agrega la 90.ª (versión).</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Un pipeline clásico de 5 etapas con forwarding es el punto de equilibrio didáctico: CPI cercano a 1 con poca lógica extra. Frente a un core de 2-3 etapas (Ibex, Cortex-M0+) rinde más por ciclo de reloj, pero obliga a manejar hazards; frente a un pipeline más profundo o con <b>predicción de saltos</b> (BTB, gshare, como BOOM) es mucho más simple, a costa de pagar 2 burbujas por cada salto tomado porque se resuelve en EX y no se predice.</p>
-      <p>Mantener hazards, forwarding y flush como módulos separados (carpeta <code>flow/</code>) deja visible cada política y permite reemplazar una sin tocar las demás (por ejemplo, agregar un predictor sería cambiar ${g('pc_next')} y ${g('module:flush_unit', 'flush_unit', 'pipeline/flow/flush_unit.v')}).</p>`,
+      <p>Cinco etapas con forwarding da CPI cercano a 1 (1,34–1,62 medido) con poca lógica extra, y es el tamaño en el que los tres tipos de hazard se ven por separado. No hay predictor: cada salto tomado cuesta 2 ciclos, a cambio de no tener tablas ni lógica de recuperación.</p>
+      <p>Hazards, forwarding y flush viven en módulos separados (<code>flow/</code>), así que cada política se puede cambiar sin tocar las otras: un predictor tocaría solo ${g('pc_next')} y ${g('module:flush_unit', 'flush_unit', 'pipeline/flow/flush_unit.v')}.</p>`,
   },
   refs: [
     { label: 'riscv_pipeline', sym: 'module:riscv_pipeline' },
@@ -54,7 +48,7 @@ export default {
     { name: 'i_imem_we', dir: 'in', width: 1, side: 'l', ext: 'debug', desc: 'Habilita la escritura de un byte en la imem (carga de programa).' },
     { name: 'i_imem_waddr', dir: 'in', width: 'IMEM_ADDR_W', side: 'l', ext: 'debug', desc: 'Dirección de byte donde se escribe en la imem.' },
     { name: 'i_imem_wdata', dir: 'in', width: 8, side: 'l', ext: 'debug', desc: 'Byte a escribir en la imem.' },
-    { name: 'i_dbg_addr', dir: 'in', width: 16, side: 'b', ext: 'debug', desc: 'Selecciona qué palabra del mapa de debug se lee (0..85).' },
+    { name: 'i_dbg_addr', dir: 'in', width: 16, side: 'b', ext: 'debug', desc: 'Selecciona qué palabra del mapa de debug se lee (0..88).' },
     { name: 'o_dbg_data', dir: 'out', width: 32, side: 'r', ext: 'debug', desc: 'Palabra del mapa de debug seleccionada, combinacional.' },
     { name: 'o_dbg_count', dir: 'out', width: 16, side: 'r', ext: 'debug', desc: 'Cantidad de palabras del mapa de debug (89).' },
     { name: 'o_halt', dir: 'out', width: 1, side: 'r', ext: 'debug', desc: 'Nivel: 1 cuando un ECALL/EBREAK llegó a WB.' },

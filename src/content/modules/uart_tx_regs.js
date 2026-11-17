@@ -16,15 +16,13 @@ export default {
   kind: 'seq',
   explain: {
     firstPrinciples: `
-      <p>Un transmisor tiene que recordar cuatro cosas entre ciclos: la fase de la trama (estado), cuánto lleva del bit actual (<code>s</code>), cuántos bits ya mandó (<code>n</code>) y los bits que todavía le faltan (el byte en el registro de desplazamiento). Esa memoria son flip-flops, que copian su entrada en cada flanco del reloj.</p>
-      <p>Hay un quinto registro, de naturaleza distinta: el flip-flop de la <b>línea</b> (<code>o_tx</code>). Pasar la salida por un registro hace que el pin cambie solo en los flancos de reloj y esté limpio el resto del tiempo; es la forma de evitar glitches en una salida que otro dispositivo va a muestrear.</p>
-      <p>El valor de reset de este flip-flop importa: la línea UART en reposo es 1. Si se reiniciara a 0, el receptor del otro lado vería un start bit y recibiría un byte basura apenas arrancara la FPGA.</p>`,
+      <p>Estado, ticks, bits y byte, como en el receptor, más un quinto flip-flop: la línea (<code>o_tx</code>). Su valor de reset importa, porque la UART en reposo está en 1.</p>`,
     inThisProject: `
-      <p>Un solo <code>always @(posedge i_clk)</code>: con <code>i_reset</code>, ${L('o_state')} = 00 (IDLE), ${L('o_s')} = 0, ${L('o_n')} = 0, ${L('o_byte')} = 0 y ${L('o_tx')} = <b>1</b>; si no, cada registro toma su valor <code>*_next</code>. El README resume la regla: "el estado vuelve a 0 (IDLE) y la línea a 1 (reposo)".</p>
-      <p>Anchos: <code>o_s</code> es <code>$clog2(N_TICKS)</code> = 4, <code>o_n</code> es <code>$clog2(NB_DATA)</code> = 3, <code>o_byte</code> es <code>NB_DATA</code> = 8. <code>o_tx</code> sale directamente al pin D4 a través de <code>uart_tx</code> y <code>uart_core</code>.</p>`,
+      <ul>
+        <li>Con reset: estado IDLE, contadores y byte en 0, ${L('o_tx')} = <b>1</b>. Sale al pin D4.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Reset de la línea a 1 vs. dejarla sin reset.</b> Sin reset, el flip-flop arrancaría en un valor indefinido hasta el primer flanco con reset; la UART del otro lado podría ver un start falso. Con 1 queda asegurada la condición de reposo.</p>
-      <p><b>Registrar <code>tx</code> añade un ciclo de latencia</b> respecto de la FSM (la línea cambia un ciclo después de entrar a START). Es irrelevante a 19200 baud, donde un ciclo es 1/2600 de bit.</p>`,
+      <p><b>Línea a 1 en el reset</b>: si arrancara en 0, la PC vería un start falso y recibiría un byte basura al encender la placa. El ciclo de latencia del registro es irrelevante: un bit dura unos 3600 ciclos.</p>`,
   },
   refs: [{ label: 'o_tx', sym: 'o_tx' }, { label: 'o_state', sym: 'o_state' }],
   grid: [10, 6],

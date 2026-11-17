@@ -16,16 +16,14 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>El transmisor tiene un registro de desplazamiento: se carga con el byte a enviar y se va corriendo a la derecha para que, en cada bit, el que toca enviar quede en la posición 0. Cargar y desplazar son dos operaciones sobre el mismo registro, y se resuelven con un mux de prioridad: si hay <code>load</code>, entra el dato nuevo; si hay <code>shift</code>, se desplaza; si no, se mantiene.</p>
-      <p>Los contadores de ticks y de bits son iguales a los del receptor (limpiar, incrementar o mantener). Lo propio del transmisor es el último mux: el nivel que tendrá la línea en el próximo flanco. Se decide con un selector: o bien el bit 0 del byte (en DATA), o bien un nivel fijo (0 en START, 1 en reposo y stop). La FSM solo dice cuál de los dos casos aplica.</p>
-      <p>Todo esto es combinacional: calcula el valor del <i>próximo</i> ciclo. El registro que lo guarda está en otro módulo, lo que impide que alguna rama quede "sin asignar" y genere un latch.</p>`,
+      <p>El desplazador se carga con el byte (<code>load</code>) y corre a la derecha (<code>shift</code>) para que el bit a mandar quede siempre en la posición 0. El último mux da el nivel de la línea: ese bit en DATA, o un nivel fijo.</p>`,
     inThisProject: `
-      <p>${L('o_s_next')} y ${L('o_n_next')}: <code>clear ? 0 : inc ? +1 : mantener</code> (4 y 3 bits). ${L('o_byte_next')} = <code>i_load ? i_din : i_shift ? i_byte &gt;&gt; 1 : i_byte</code>: el <code>load</code> tiene prioridad sobre el <code>shift</code>. ${L('o_tx_next')} = <code>i_tx_data ? i_byte[0] : i_tx_level</code>.</p>
-      <p>Banderas ${L('o_s_last')} (<code>s == N_TICKS - 1</code> = 15) y ${L('o_n_last')} (<code>n == NB_DATA - 1</code> = 7). A diferencia del receptor, el transmisor no necesita bandera de medio bit: no tiene que muestrear, solo contar bits completos.</p>
-      <p>El desplazamiento a la derecha rellena con ceros por la izquierda (<code>&gt;&gt; 1</code>), y no importa: después de 8 desplazamientos el byte ya se envió entero.</p>`,
+      <ul>
+        <li>${L('o_tx_next')} <code>= i_tx_data ? i_byte[0] : i_tx_level</code>.</li>
+        <li>No hay bandera de medio bit: el transmisor no muestrea, solo cuenta bits completos.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Desplazar vs. indexar.</b> Con el desplazador, el bit a enviar es siempre <code>i_byte[0]</code>; la alternativa, un mux 8:1 con <code>i_n</code> como selector, evitaría el <code>shift</code> y el registro se mantendría intacto. El desplazador elimina ese mux grande del camino a la salida y deja un solo bit fijo.</p>
-      <p><b>Priorizar <code>load</code> sobre <code>shift</code>.</b> Nunca se activan a la vez (load en IDLE, shift en DATA), pero un orden explícito evita estados indefinidos.</p>`,
+      <p>Desplazar en lugar de indexar con <code>n</code> saca un mux 8:1 del camino al pin: lo que sale es siempre un bit fijo.</p>`,
   },
   refs: [{ label: 'o_byte_next', sym: 'o_byte_next' }, { label: 'o_tx_next', sym: 'o_tx_next' }],
   grid: [12, 7],

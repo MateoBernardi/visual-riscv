@@ -16,15 +16,13 @@ export default {
   kind: 'seq',
   explain: {
     firstPrinciples: `
-      <p>Todo lo que el receptor "recuerda" entre ciclos vive en cuatro registros: en qué estado está, cuántos ticks lleva dentro del bit, cuántos bits del byte ya leyó, y los bits ya acumulados. Sin ellos cada ciclo empezaría de cero. Un registro es un grupo de flip-flops que, en cada flanco de reloj, copia su entrada; si la entrada es el "próximo valor" calculado por lógica combinacional, el registro implementa el paso de un ciclo al siguiente.</p>
-      <p>Al aislar los registros en su propio módulo queda a la vista todo el estado del receptor: 2 + 4 + 3 + 8 = 17 bits. Cualquier cosa que no esté acá es combinacional y no guarda nada, lo que simplifica razonar sobre latches y sobre el reset.</p>
-      <p>El reset es <b>sincrónico</b>: se evalúa solo en el flanco. Lleva el estado a 00 (IDLE), los contadores y el byte a 0. Se elige el reset sincrónico porque todo el sistema tiene un único dominio de reloj y el reset ya llega sincronizado.</p>`,
+      <p>Todo lo que el receptor recuerda entre ciclos son 17 bits: estado (2), ticks (4), bits (3) y el byte (8). Ponerlos en un módulo aparte deja a la vista todo el estado; lo demás es combinacional.</p>`,
     inThisProject: `
-      <p>Un solo <code>always @(posedge i_clk)</code>: con <code>i_reset</code>, ${L('o_state')} = <code>2'b00</code> (IDLE), ${L('o_s')} = 0, ${L('o_n')} = 0, ${L('o_byte')} = 0; si no, cada uno toma su <code>*_next</code>. Sus anchos dependen de los parámetros: <code>o_s</code> es <code>$clog2(N_TICKS)</code> = 4 bits, <code>o_n</code> es <code>$clog2(NB_DATA)</code> = 3 bits.</p>
-      <p>Observación: <code>o_byte</code> se limpia con el reset pero <b>no</b> entre bytes; cada byte nuevo reemplaza los 8 bits por desplazamiento, así que no hace falta limpiarlo. <code>o_byte</code> conserva el último byte recibido hasta que llegue otro, y es la salida <code>o_dout</code> del receptor.</p>`,
+      <ul>
+        <li><code>o_byte</code> no se limpia entre bytes: 8 desplazamientos lo reemplazan entero. Es la salida <code>o_dout</code>.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Registrar el byte aunque se desplace.</b> El byte completo se estabiliza recién al terminar los 8 desplazamientos; mientras tanto <code>o_dout</code> cambia. Es correcto porque el consumidor (el FIFO) solo lo captura cuando <code>rx_done = 1</code>, es decir cuando el byte ya está completo.</p>
-      <p><b>Un solo bloque secuencial para los cuatro registros.</b> Permite un único chequeo de reset y evita inferir latches. Cuesta nada.</p>`,
+      <p><code>o_dout</code> cambia mientras se desplaza, y es correcto: la FIFO lo captura solo con <code>rx_done</code>, cuando el byte está completo. Así no hace falta un registro de salida aparte.</p>`,
   },
   refs: [{ label: 'o_state', sym: 'o_state' }, { label: 'o_byte', sym: 'o_byte' }],
   grid: [10, 5],

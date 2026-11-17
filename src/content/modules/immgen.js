@@ -35,23 +35,14 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>Una instrucción de 32 bits tiene que guardar muchas cosas: opcode, registros, y a veces una constante (el inmediato). Para que los registros siempre estén en el mismo lugar (así el banco de registros se puede leer antes de saber qué instrucción es), los bits sobrantes se usan para el inmediato, y su tamaño y ubicación dependen del tipo de instrucción: 12 bits en I y S, 13 en B, 20 en U y J.</p>
-      <p>Pero la ALU y el sumador de saltos necesitan un número de 32 bits. Hay que <b>reconstruir</b> el inmediato: juntar los bits de donde estén, rellenar los bits altos y, si el número es con signo, repetir el bit de signo (extensión de signo) para que el valor numérico se preserve. En RISC-V el bit de signo es siempre <code>inst[31]</code>: se puede empezar a extender el signo en paralelo con la decodificación, sin esperar a saber el formato.</p>
-      <p>El orden "desordenado" de los bits en B y J no es un capricho: está elegido para que cada bit del resultado salga de la menor cantidad posible de posiciones distintas entre formatos, con lo que el mux final es más chico. Además B y J no guardan el bit 0 (los destinos son múltiplos de 2), lo que duplica el alcance con los mismos bits.</p>
-      <p>El hardware resultante es un multiplexor de cinco entradas, una por formato, cuyo selector sale de la unidad de control. No hay ninguna operación aritmética: es puro recableado más un mux.</p>`,
+      <p>Cada formato guarda la constante en bits distintos (12 en I/S, 13 en B, 20 en U/J). Hay que juntarlos y extender el signo a 32 bits. RISC-V deja el signo siempre en <code>inst[31]</code> y ordena los bits de B y J para que el mux final sea chico.</p>`,
     inThisProject: `
-      <p>Es ${g('module:immgen', 'immgen')} (instancia <code>u_immgen</code>). Recibe la instrucción completa (<code>instr</code>) y <code>imm_sel</code> de 3 bits, y entrega <code>imm</code> con un <code>case</code> dentro de <code>always @(*)</code>, con la codificación <code>000=I, 001=S, 010=B, 011=U, 100=J</code>.</p>
       <ul>
-        <li>I: <code>{{20{instr[31]}}, instr[31:20]}</code></li>
-        <li>S: <code>{{20{instr[31]}}, instr[31:25], instr[11:7]}</code></li>
-        <li>B: <code>{{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0}</code></li>
-        <li>U: <code>{instr[31:12], 12'b0}</code></li>
-        <li>J: <code>{{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0}</code></li>
-      </ul>
-      <p>Notas de esta implementación: en <code>control.v</code> la instrucción JAL fija <code>imm_sel = 100</code>, y JALR usa I (<code>000</code>); AUIPC y LUI usan U (<code>011</code>). Para instrucciones sin inmediato (R-type) <code>imm_sel</code> queda en <code>000</code> y el resultado simplemente se ignora. El caso <code>default</code> devuelve 0. En los inmediatos tipo I de operaciones lógicas (ANDI, ORI, XORI) la extensión también es con signo, como manda la especificación. Los shifts inmediatos (SLLI/SRLI/SRAI) toman el shamt de los 5 bits bajos del inmediato; la ALU descarta el resto.</p>`,
+        <li><code>imm_sel</code>: <code>000</code> I, <code>001</code> S, <code>010</code> B, <code>011</code> U, <code>100</code> J. JALR usa I; LUI y AUIPC usan U.</li>
+        <li>Los shifts inmediatos toman el shamt de los 5 bits bajos; la ALU descarta el resto.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Un mux de 5 vías con los bits ya recableados es la implementación mínima: sin lógica, solo cables y un selector. Las alternativas son poco prácticas para un core de este tamaño: podrías <b>expandir el inmediato por formato en el decodificador</b> (un solo bloque control+immgen) pero se pierde la modularidad; con la <b>extensión C</b> (instrucciones comprimidas) se necesitarían más formatos de inmediato y una etapa previa de expansión; y en un procesador con <b>decodificación por uses_rs1/uses_rs2</b> el immgen no cambia, pero la lógica de hazards sí.</p>
-      <p>En esta implementación el cálculo se hace en ID, en paralelo a la lectura del banco de registros, de modo que no suma tiempo al camino crítico: el inmediato llega a ID/EX junto con los operandos.</p>`,
+      <p>Un mux de 5 vías con los bits ya recableados: no hay lógica, solo cables. Se calcula en ID en paralelo con la lectura del regfile, así que no suma al camino crítico.</p>`,
   },
   refs: [
     { label: 'immgen', sym: 'module:immgen' },

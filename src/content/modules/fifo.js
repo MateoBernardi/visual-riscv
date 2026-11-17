@@ -16,25 +16,16 @@ export default {
   kind: 'mixed',
   explain: {
     firstPrinciples: `
-      <p>Cuando un productor y un consumidor trabajan a ritmos distintos (acá, una UART que entrega un byte cada 520 &micro;s y una FSM que lo consume en un ciclo de 20 ns, o al revés al transmitir), hace falta un <b>buffer</b> en el medio. La cola FIFO (First In, First Out) respeta el orden: el primero que entra es el primero que sale. Con ella el productor no necesita que el consumidor esté listo en el mismo instante.</p>
-      <p>Implementarla con un arreglo de N palabras y dos punteros es barato: <code>write_ptr</code> indica dónde se guardará el próximo dato; <code>read_ptr</code>, de dónde se sacará el próximo. Al escribir se incrementa <code>write_ptr</code>; al leer, <code>read_ptr</code>. Cuando un puntero pasa de la última posición, vuelve a la primera: es un buffer <b>circular</b>. Si el arreglo tiene 2<sup>k</sup> posiciones y los punteros k bits, el "dar la vuelta" ocurre solo por desbordamiento del contador, sin comparadores.</p>
-      <p>Queda un problema clásico: cuando <code>write_ptr == read_ptr</code>, ¿la cola está vacía o llena? Los punteros no lo distinguen. Tres soluciones: un bit extra por puntero, un contador de ocupación, o <b>dos flags registrados</b> (<code>full</code> y <code>empty</code>) que se actualizan según la última operación. Este diseño usa la tercera: es una pequeña máquina de estados implícita.</p>
-      <p>Las banderas no son un lujo: son el <b>handshake</b> de la cola. El productor consulta <code>full</code> para no pisar datos; el consumidor consulta <code>empty</code> para no leer basura.</p>`,
+      <p>Una cola desacopla a un productor y un consumidor que van a ritmos distintos. Con un arreglo de 2<sup>k</sup> posiciones y dos punteros de k bits, dar la vuelta es gratis (desborde). El problema clásico es que <code>write_ptr == read_ptr</code> puede significar vacía o llena; acá lo resuelven dos flags registrados, <code>full</code> y <code>empty</code>.</p>`,
     inThisProject: `
-      <p>Parámetros: <code>NB_DATA = 8</code> y <code>PTR_LEN = 2</code> (el top lo pasa así; el default del módulo es 4): ${L('array')} de 2<sup>2</sup> = 4 bytes. Se instancia <b>dos veces</b> en <code>uart_core</code>: <code>RX_FIFO</code> (escribe <code>rx_done</code> con el byte recibido; lee la debug unit) y <code>TX_FIFO</code> (escribe la debug unit; lee <code>tx_done</code>). Esta vista describe el módulo; las dos instancias son idénticas.</p>
-      <p><b>Escritura.</b> ${L('write_enable')} = <code>i_write_fifo &amp; ~full</code> habilita la escritura síncrona en <code>array[write_ptr]</code>: si está llena, el byte nuevo se pierde. <b>Lectura.</b> ${L('o_data_to_read')} = <code>array[read_ptr]</code>, lectura asincrónica ("show-ahead"): la cabeza ya está en el puerto de salida antes de pedirla; <code>i_read_fifo</code> solo hace el pop.</p>
-      <p><b>Estados implícitos.</b> Los flags registrados ${L('full')} y ${L('empty')} definen tres estados: VACÍA (<code>empty = 1</code>, reset), INTERMEDIA y LLENA (<code>full = 1</code>). El bloque combinacional examina <code>{i_write_fifo, i_read_fifo}</code> con un <code>case</code> (<code>READ</code> = 01, <code>WRITE</code> = 10, <code>READWRITE</code> = 11):</p>
       <ul>
-        <li><b>READ</b> y no vacía: <code>read_ptr_next = read_ptr + 1</code>, <code>full_next = 0</code>, y si <code>read_ptr_ok == write_ptr</code> entonces <code>empty_next = 1</code> (se leyó el último).</li>
-        <li><b>WRITE</b> y no llena: <code>write_ptr_next = write_ptr + 1</code>, <code>empty_next = 0</code>, y si <code>write_ptr_ok == read_ptr</code> entonces <code>full_next = 1</code>.</li>
-        <li><b>READWRITE</b>: ambos punteros avanzan y los flags no cambian (la ocupación no varía).</li>
-      </ul>
-      <p><b>Observación de fidelidad.</b> En <code>READWRITE</code> no se mira <code>full</code> ni <code>empty</code>. En este sistema nunca se pide leer una cola vacía (la debug unit lee con <code>~rx_empty</code> y TX hace pop solo después de haber tomado un byte), pero con la cola de RX llena y un byte llegando justo al mismo tiempo que se lee, <code>write_enable</code> es 0 y el dato se pierde mientras <code>write_ptr</code> avanza. Para el protocolo (un comando y su respuesta) no ocurre.</p>`,
+        <li>4 bytes (<code>PTR_LEN = 2</code>), dos instancias idénticas: RX_FIFO y TX_FIFO.</li>
+        <li>Lectura "show-ahead": la cabeza ya está en ${L('o_data_to_read')}; <code>i_read_fifo</code> solo hace el pop.</li>
+        <li>En <code>READWRITE</code> no se miran los flags: con la cola llena, un byte que llega justo cuando se lee se pierde. El protocolo pedido/respuesta nunca llega a eso.</li>
+      </ul>`,
     whyThisChoice: `
-      <p><b>Flags registrados vs. comparar punteros combinacionalmente.</b> Los flags registrados salen directo de un flip-flop (rápidos y sin glitches) y son las señales que cruzan al otro módulo. A cambio, cada caso debe calcular el flag siguiente con un <code>case</code> explícito.</p>
-      <p><b>Arreglo con lectura asincrónica.</b> 4 &times; 8 bits cabe en lógica distribuida (LUT RAM): no consume BRAM. La lectura asincrónica evita un ciclo de latencia en la cabeza; con una BRAM síncrona haría falta un paso extra.</p>
-      <p><b>4 posiciones.</b> Sobra para un protocolo de pedido/respuesta. La profundidad es un parámetro (<code>PTR_LEN</code>), así que subirla es cambiar un número. La alternativa de FIFO profundo con almacenamiento de un dump completo (346 bytes) evitaría la contrapresión pero cuesta una BRAM.</p>
-      <p><b>Un solo reloj.</b> No es un FIFO asincrónico (con punteros Gray): productor y consumidor comparten <code>i_clk</code>, porque ya se sincronizó la entrada de la UART.</p>`,
+      <p><b>Flags registrados</b>: salen de un flip-flop, sin glitches, que es lo que conviene en señales que cruzan a otro módulo.</p>
+      <p><b>4 posiciones en LUTRAM</b>: sobran para pedido/respuesta y no gastan BRAM. Guardar un volcado completo (362 bytes) sí la necesitaría. Un solo reloj, sin punteros Gray, porque RX ya entra sincronizada.</p>`,
   },
   refs: [
     { label: 'array', sym: 'array' },

@@ -22,21 +22,14 @@ export default {
   kind: 'comb',
   explain: {
     firstPrinciples: `
-      <p>Un salto condicional tiene que responder dos preguntas: <b>¿salto?</b> y <b>¿adónde?</b>. La segunda es aritmética pura: el destino es la dirección del propio branch más un desplazamiento que viene en la instrucción (<code>PC + imm</code>), un sumador. La primera depende de comparar dos registros y de qué condición pide la instrucción: igual, distinto, menor con signo, mayor o igual con signo, y las dos versiones sin signo.</p>
-      <p>Comparar dos números es lo que ya hace la ALU cuando resta. En lugar de duplicar comparadores, la ALU entrega unas pocas banderas (el resultado de la resta es cero, el primero es menor con signo, es menor sin signo) y una unidad chica traduce "qué condición pidió la instrucción" a "cuál de esas banderas hay que mirar y si hay que invertirla". La instrucción lleva esa condición en los 3 bits de funct3.</p>
-      <p>La separación entre quién <i>decide</i> el salto y quién lo <i>ejecuta</i> también importa. Esta unidad solo informa "la condición es verdadera"; que la instrucción realmente sea un branch lo determina el decodificador, y que haya que redirigir el PC y anular instrucciones lo ordena el pipeline.</p>
-      <p>Por último, el destino del salto necesita su propio sumador porque la ALU está ocupada comparando: la ALU resta los registros mientras este sumador calcula <code>pc + imm</code>, en paralelo.</p>`,
+      <p>Un branch pregunta <b>¿salto?</b> y <b>¿adónde?</b>. El destino es <code>PC + imm</code>, un sumador. La decisión reutiliza las banderas de la resta que ya hace la ALU: funct3 dice cuál mirar y si invertirla.</p>`,
     inThisProject: `
-      <p>Es ${g('module:branch_unit', 'branch_unit')} (instancia <code>u_bu</code>) y tiene dos mitades independientes, ambas combinacionales:</p>
       <ul>
-        <li>${g('branch_target')} <code>= pc + b_imm</code>, un sumador dedicado de 32 bits. <code>pc</code> es el PC del branch (<code>ex_pc</code>), no PC+4, y <code>b_imm</code> es <code>ex_imm</code> (en JAL, el inmediato J).</li>
-        <li>${g('branch_taken')}: un <code>case (funct3)</code>: <code>000</code> BEQ = <code>zero</code>; <code>001</code> BNE = <code>~zero</code>; <code>100</code> BLT = <code>alu_lt</code>; <code>101</code> BGE = <code>~alu_lt</code>; <code>110</code> BLTU = <code>alu_ltu</code>; <code>111</code> BGEU = <code>~alu_ltu</code>; cualquier otro código da 0.</li>
-      </ul>
-      <p>La unidad no sabe si la instrucción en EX es un branch. En riscv_pipeline.v se compone: <code>branch_taken = ex_branch &amp; bu_taken</code>, <code>redirect = branch_taken | ex_jump</code> y <code>redirect_target = ex_is_jalr ? (alu_out &amp; ~1) : bu_target</code>. Es decir, <code>bu_target</code> sirve también para JAL (que no pasa por <code>branch_taken</code>), y el JALR calcula su destino en la ALU. El <code>funct3</code> de un JAL no tiene significado, pero da igual porque <code>ex_jump</code> fuerza el redirect de todas formas.</p>
-      <p>En esta implementación los saltos se resuelven en la etapa EX; por eso un salto tomado vacía las dos instrucciones que entraron después (IF/ID e ID/EX). Otros diseños resuelven en ID para pagar un solo ciclo.</p>`,
+        <li>No sabe si la instrucción es un branch: el pipeline arma <code>branch_taken = ex_branch &amp; bu_taken</code> y <code>redirect = branch_taken | ex_jump</code>.</li>
+        <li>${g('branch_target')} también sirve para JAL; JALR calcula su destino en la ALU (<code>alu_out &amp; ~1</code>).</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Resolver en EX reutiliza las banderas de la ALU y requiere cero hardware de forwarding nuevo hacia ID: los operandos ya llegaron con forwarding. El precio es 2 burbujas por salto tomado. La alternativa de <b>resolver en ID con un comparador temprano</b> baja la penalidad a 1 ciclo, pero obliga a agregar forwarding hacia ID y a frenar si el operando viene de un load (MIPS R3000, Cortex-M0+). Una <b>predicción</b> (BTFN estática, bimodal, gshare, BTB) evitaría la burbuja cuando acierta, con tablas y lógica de recuperación; el <b>salto retardado</b> de MIPS no es una opción en RISC-V porque no existe en la ISA; y la <b>ejecución predicada</b> (ARM, Zicond) evita saltos cortos.</p>
-      <p>Contar con un sumador propio (en vez de reutilizar la ALU) cuesta unas decenas de LUTs pero evita un conflicto estructural: la ALU está ocupada restando para el branch.</p>`,
+      <p>Resolver en EX aprovecha que los operandos ya llegaron con forwarding y que la ALU ya restó: no hay comparador ni forwarding nuevos hacia ID. Cuesta 2 burbujas por salto tomado en lugar de 1. El sumador propio (unas decenas de LUTs) existe porque la ALU está ocupada comparando en ese mismo ciclo.</p>`,
   },
   refs: [
     { label: 'branch_unit', sym: 'module:branch_unit' },

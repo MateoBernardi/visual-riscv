@@ -23,21 +23,15 @@ export default {
   kind: 'mixed',
   explain: {
     firstPrinciples: `
-      <p>Un pipeline tiene varias razones para dejar de avanzar normalmente, y cada una exige una combinación distinta de tres acciones: <b>congelar</b> el PC, <b>congelar</b> un registro de pipeline y <b>anular</b> (convertir en burbuja) lo que entra a una etapa. Un salto tomado anula las instrucciones traídas por error y cambia el PC. Un load-use congela el PC y IF/ID, y mete una burbuja. Una pausa externa congela todo. Un <b>halt</b> (ECALL/EBREAK) tiene que dejar de buscar instrucciones y anular las que ya entraron, pero dejar terminar las anteriores.</p>
-      <p>Las tres razones pueden coincidir en el mismo ciclo, así que alguien tiene que combinar las señales (con ORs y ANDs) y decidir qué registro recibe qué. Esa lógica "de pegamento" no pertenece a una etapa en particular: lee señales de EX y actúa sobre IF, ID y EX.</p>
-      <p>El halt tiene una dificultad particular: cuando llega a EX hay que cortar el fetch inmediatamente, pero en los ciclos siguientes el halt ya no está en EX (avanzó a MEM y WB) y el procesador tiene que <i>recordar</i> que no debe seguir. Eso requiere un bit de memoria "pegajoso" (un flip-flop que se pone en 1 y solo un reset lo borra).</p>`,
+      <p>Cada evento pide otra mezcla de <b>congelar</b> el PC, congelar un registro y <b>anular</b> lo que entra a una etapa. Un salto anula y redirige, un load-use congela y mete una burbuja, una pausa congela todo, y un halt corta el fetch pero deja terminar lo anterior. Como el halt sigue avanzando, hace falta un bit "pegajoso" que recuerde que ya no se busca nada.</p>`,
     inThisProject: `
-      <p>Esta lógica está en línea en riscv_pipeline.v, no en un módulo propio. Tiene cuatro piezas:</p>
       <ul>
-        <li>${g('branch_taken')} <code>= ex_branch &amp; bu_taken</code> y ${g('redirect')} <code>= branch_taken | ex_jump</code>. El destino es ${g('redirect_target')} <code>= ex_is_jalr ? (alu_out &amp; ~1) : bu_target</code>: JALR usa la suma de la ALU con el bit 0 forzado a 0, el resto el sumador de branch_unit.</li>
-        <li>${g('halting_r')}: <code>if (rst) 0; else if (en &amp;&amp; ex_halt) 1</code>. Pegajoso desde que un halt llega a EX hasta el reset. ${g('halting')} es solo un alias (<code>assign halting = halting_r</code>).</li>
-        <li>${g('stop_fetch')} <code>= ex_halt | halting</code>: cubre el ciclo en que el halt está en EX (todavía no registrado) y todos los siguientes.</li>
-        <li>Los flush finales: ${g('flush_if_id')} <code>= flush_if_id_r | stop_fetch</code> y ${g('flush_id_ex')} <code>= flush_id_ex_r | stop_fetch | stall</code>; y ${g('pc_en')} <code>= en &amp; ~stall &amp; ~stop_fetch</code>.</li>
-      </ul>
-      <p>La consecuencia es que "ninguna instrucción posterior al halt puede ejecutarse": las instrucciones más viejas siguen su camino y retiran normalmente. Cuando el halt llega a WB, <code>wb_halt</code> sube <code>o_halt</code>. Detalles de esta implementación: con <code>en = 0</code> el halt no se registra; no hay prioridad explícita entre stall y flush por salto porque no pueden coincidir (un load y un branch no ocupan EX a la vez); sí pueden coincidir un halt y un stall, y en ese caso <code>stop_fetch</code> ya anula todo.</p>`,
+        <li>Está en línea en riscv_pipeline.v: ${g('redirect')}, ${g('redirect_target')}, ${g('halting_r')}, ${g('stop_fetch')}, ${g('flush_if_id')}, ${g('flush_id_ex')} y ${g('pc_en')}.</li>
+        <li>${g('halting_r')} se pone en 1 cuando un halt llega a EX y solo lo borra el reset. ${g('stop_fetch')} <code>= ex_halt | halting</code> cubre también el primer ciclo.</li>
+        <li>Stall y salto nunca coinciden (un load y un branch no ocupan EX a la vez). Halt y stall sí, y <code>stop_fetch</code> ya anula todo.</li>
+      </ul>`,
     whyThisChoice: `
-      <p>Dejar esta lógica en riscv_pipeline.v como asignaciones de una línea la hace fácil de leer, pero mezcla política de control con el cableado. La alternativa es un módulo central de "pipeline control" que centralice stall, flush y halt (como hacen muchos diseños en la práctica). Para el halt, otra solución común es una <b>FSM</b> con estados RUN/DRAIN/HALTED en lugar de un único flip-flop; otra es tratar ECALL/EBREAK como <b>trap</b> con CSRs (mepc, mcause, mtvec) en vez de frenar, que es lo que haría un RISC-V completo con modo M y permite sistemas operativos.</p>
-      <p>Resolver el salto en EX hace que esta lógica quede cerca de la ALU y no necesite forwarding hacia ID; si se resolviera en ID, la penalidad bajaría a 1 ciclo a costa de un comparador y de bypass extra. La predicción de saltos (estática, bimodal, gshare, BTB) añadiría un camino de corrección además de este.</p>`,
+      <p>Un flip-flop pegajoso es lo mínimo para garantizar que "nada posterior a un halt se ejecuta". Un trap completo (CSRs <code>mtvec</code>, <code>mepc</code>) permitiría manejarlo y seguir, pero acá no hay sistema operativo: quien atiende el halt es la debug unit, que lee la causa del volcado.</p>`,
   },
   refs: [
     { label: 'stop_fetch', sym: 'stop_fetch' },
