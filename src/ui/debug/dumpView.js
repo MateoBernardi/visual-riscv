@@ -1,3 +1,4 @@
+import { TRAP_CAUSE } from '../../sim/isa.js';
 // dumpView.js - registro de tráfico UART y volcado decodificado (respuesta del comando D).
 // createResultViews(logRoot, dumpRoot) -> { log({dir, bytes, meaning}), clearLog(), showDump(decoded), clearDump(), counts }
 import { h, clear, hex8, hex32, ABI } from '../dom.js';
@@ -34,7 +35,7 @@ export function createResultViews(logRoot, dumpRoot) {
   // ---------------------------------------------------------------- volcado
   let prev = null;
   const dumpBody = h('div', { class: 'dp-body' });
-  const dumpEmpty = () => h('div', { class: 'lg-empty' }, 'Mandá ', h('b', {}, 'D Volcado'), ' para pedirle a la FPGA el estado del pipeline: 86 palabras (346 bytes ≈ 180 ms), que acá se decodifican.');
+  const dumpEmpty = () => h('div', { class: 'lg-empty' }, 'Mandá ', h('b', {}, 'D Volcado'), ' para pedirle a la FPGA el estado del pipeline: 90 palabras (362 bytes ≈ 190 ms), que acá se decodifican.');
   dumpBody.append(dumpEmpty());
   dumpRoot.append(h('div', { class: 'dp' }, dumpBody));
   function clearDump() { prev = null; clear(dumpBody).append(dumpEmpty()); }
@@ -51,7 +52,8 @@ export function createResultViews(logRoot, dumpRoot) {
     ];
     const cell = (label, v, pv, cls = '') => h('div', { class: 'dp-c ' + cls + ((v >>> 0) === 0 ? ' zero' : '') + (pv != null && (pv >>> 0) !== (v >>> 0) ? ' chg' : '') }, h('span', { class: 'dp-k' }, label), h('span', { class: 'dp-v mono' }, hex32(v)));
     clear(dumpBody).append(
-      h('div', { class: 'dp-meta' }, h('b', {}, 'Volcado decodificado'), h('span', { class: 'muted' }, ` ${meta.bytes || 346} bytes · 86 palabras`), flags.length ? h('span', { class: 'dp-flags' }, flags.map((f) => h('i', {}, f))) : null),
+      h('div', { class: 'dp-meta' }, h('b', {}, 'Volcado decodificado'), h('span', { class: 'muted' }, ` ${meta.bytes || 362} bytes · 90 palabras`), flags.length ? h('span', { class: 'dp-flags' }, flags.map((f) => h('i', {}, f))) : null),
+      d.trap && (w.halt || e.halting) ? h('div', { class: 'dp-trap' }, h('b', {}, 'Detenido: '), `${TRAP_CAUSE[d.trap.cause] || 'causa ' + d.trap.cause} (causa ${d.trap.cause}) en pc ${hex32(d.trap.pc)}`, d.trap.cause === 3 || d.trap.cause === 11 ? null : ` · dirección ${hex32(d.trap.tval)}`) : null,
       h('div', { class: 'dp-stages' }, stages.map(([n2, a, b]) => h('div', { class: 'dp-st', 'data-s': n2 }, h('b', {}, n2), h('span', { class: 'mono' }, a), b ? h('small', { class: 'mono' }, b) : null))),
       h('div', { class: 'dp-h' }, h('span', { class: 'xp-h' }, 'Registros'), h('span', { class: 'dp-note' }, 'en naranja: cambió desde el volcado anterior')),
       h('div', { class: 'dp-grid' }, Array.from(d.regs, (v, i) => cell(`x${i} ${ABI[i]}`, v, prev ? prev.regs[i] : null))),

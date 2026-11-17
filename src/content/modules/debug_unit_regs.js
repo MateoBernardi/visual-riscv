@@ -23,7 +23,7 @@ const REGS = [
 
 const P = (name, dir, width, side, ext, desc) => ({ name, dir, width, side, ext, desc });
 const ports = [
-  P('i_clk', 'in', 1, 'b', 'clk (50 MHz)', 'Reloj; todos los registros capturan en <code>posedge i_clk</code>.'),
+  P('i_clk', 'in', 1, 'b', 'clk (70 MHz)', 'Reloj; todos los registros capturan en <code>posedge i_clk</code>.'),
   P('i_reset', 'in', 1, 'b', 'sys_reset', 'Reset <b>sincrónico</b> activo en alto: todo a 0.'),
   ...REGS.map(([r, w, d]) => P('i_' + r.slice(2) + '_next', 'in', w, 'l', 'COMB / FSM', 'Próximo valor de <code>' + r + '</code>.')),
   ...REGS.map(([r, w, d]) => P(r, 'out', w, 'r', r === 'o_state' ? 'FSM' : (r.startsWith('o_imem') ? 'imem' : (r === 'o_dbg_addr' ? 'pc' : 'FSM / COMB')), d)),

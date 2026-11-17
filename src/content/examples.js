@@ -231,13 +231,33 @@ addi x3, x0, 3      # NUNCA se ejecuta (queda x3 = 0)
 addi x4, x0, 4      # NUNCA se ejecuta (queda x4 = 0)
 `,
     steps: [
-      { cycle: 3, focus: 'control', note: '<p>El <code>ebreak</code> está en ID y control pone <code>halt=1</code> (en esta implementación cualquier opcode SYSTEM lo activa) y todo lo demás en 0: no escribe registros, no accede a memoria. La instrucción viaja por los registros de pipeline con su bit de halt, igual que cualquier otra señal de control.</p>' },
-      { cycle: 4, focus: 'flush', note: '<p>El <code>ebreak</code> llega a EX. Ahí se activa <code>stop_fetch = ex_halt | halting</code>: en el flanco que cierra este ciclo se anulan IF/ID e ID/EX y se congela el PC. La <code>addi x3</code> que estaba en ID desaparece antes de ejecutarse. Se detecta en EX y no antes a propósito: un ebreak en ID podría ser del camino equivocado de un branch; en EX ya es seguro que se ejecuta.</p>' },
+      { cycle: 3, focus: 'control', note: '<p>El <code>ebreak</code> está en ID: control lo marca como "detener" y apaga todo lo que escribe. La marca viaja con la instrucción como cualquier otra señal de control.</p>' },
+      { cycle: 4, focus: 'flush', note: '<p>El <code>ebreak</code> llega a EX: se vacían IF/ID e ID/EX y se congela el PC. La <code>addi x3</code> que estaba en ID desaparece antes de ejecutarse. Se detecta en EX y no antes a propósito: un ebreak en ID podría ser del camino equivocado de un branch; en EX ya es seguro que se ejecuta.</p>' },
       { cycle: 5, focus: 'pc', note: '<p>El flag <code>halting</code> quedó pegado en 1 y el PC ya no avanza. Las instrucciones anteriores al ebreak (<code>addi x1</code> y <code>addi x2</code>) siguen su camino con normalidad: en este momento el <code>addi x2</code> está en WB escribiendo. Es un halt <b>preciso</b>: lo anterior se completa, lo posterior no tiene efecto.</p>' },
       { cycle: 6, focus: 'memwb', note: '<p>El <code>ebreak</code> llega a WB: sube <code>o_halt</code>. En el sistema real, la debug unit ve ese nivel, deja de habilitar al CPU (<code>cpu_enable = 0</code>) y avisa al host con el byte <code>H</code>. El reloj nunca se detuvo: se frenó con la señal de enable de los registros.</p>' },
     ],
     explainVerification: '<p><code>x1 = 1</code> y <code>x2 = 2</code> prueban que lo anterior al halt se completó, aunque el halt ya hubiera sido detectado antes de que esas instrucciones terminaran. <code>x3 = 0</code> y <code>x4 = 0</code> prueban lo contrario: las dos instrucciones posteriores, que ya habían sido buscadas (una incluso decodificada), no tuvieron ningún efecto.</p><p>Ambas mitades son necesarias para llamar "preciso" al halt. Un test adicional importante es un <code>ebreak</code> justo después de un branch tomado: el ebreak del camino equivocado no debe detener el procesador.</p>',
     expect: { regs: { x1: 1, x2: 2, x3: 0, x4: 0 }, mem: {} },
+  },
+  {
+    id: 'trap-desalineado',
+    title: 'Trap: load desalineado',
+    level: 'Intermedio',
+    summary: 'Un lw a una dirección no múltiplo de 4: el CPU se detiene sin escribir nada y la debug unit informa causa, PC y dirección.',
+    code: `# Trap por load desalineado
+addi x1, x0, 0x100  # x1 = 0x100
+addi x2, x0, 7
+sw   x2, 0(x1)      # mem[0x100] = 7
+lw   x3, 2(x1)      # 0x102 no es múltiplo de 4: TRAP (causa 4)
+addi x4, x0, 1      # no se ejecuta
+ebreak
+`,
+    steps: [
+      { cycle: 5, focus: 'branch', note: '<p>El <code>lw</code> está en EX y su dirección es 0x102. trap_unit ve que un load de palabra no está alineado: es una excepción. La instrucción sigue hasta WB, pero con la escritura de <code>x3</code> anulada, y se vacían IF/ID e ID/EX: el <code>addi x4</code> que estaba en ID desaparece.</p><p>¿Por qué no alinear la dirección y seguir? Porque la spec dice que el acceso desalineado es una excepción o se resuelve bien; leer otra palabra en silencio sería un resultado incorrecto. riscv-formal encontró exactamente ese bug en la versión anterior.</p>' },
+      { cycle: 7, focus: 'memwb', note: '<p>El <code>lw</code> llega a WB y el CPU se detiene. La causa (4, load desalineado), el PC (0xC) y la dirección (0x102) quedan en las últimas palabras del dump, que el host muestra. En la placa se prende además el LED de excepción.</p>' },
+    ],
+    explainVerification: '<p><code>x3 = 0</code> prueba que la instrucción que falla <b>no escribe</b>; <code>x4 = 0</code>, que nada posterior se ejecutó; <code>mem[64] = 7</code> y <code>x1</code>, <code>x2</code>, que todo lo anterior terminó. Es la definición de una excepción precisa.</p><p>En el repo, cada causa tiene un test así (<code>verif/sim/tests/traps/</code>) que se corre en simulación y en la placa, y riscv-formal lo prueba para cualquier programa.</p>',
+    expect: { regs: { x1: 0x100, x2: 7, x3: 0, x4: 0 }, mem: { 64: 7 } },
   },
   {
     id: 'stall-falso',
@@ -254,31 +274,31 @@ ebreak
 # Prueba: cambiá "addi x1, x0, 5" por "addi x1, x0, 6" y el stall desaparece.
 `,
     steps: [
-      { cycle: 4, focus: 'regfile', note: '<p>El <code>addi x1, x0, 5</code> se codifica con inmediato 5, o sea <code>inst[24:20] = 00101</code>. Pero esos mismos bits son, en el formato R, el campo <code>rs2</code>. El hardware no sabe el formato hasta decodificar, así que siempre extrae <code>inst[24:20]</code> como si fuera un registro: acá "lee" <code>x5</code> aunque el addi no tiene segundo registro fuente.</p>' },
+      { cycle: 4, focus: 'regfile', note: '<p>El inmediato 5 del <code>addi</code> ocupa los mismos bits que el campo <code>rs2</code> de otros formatos. El hardware lee esos bits como registro antes de saber el formato, así que acá "ve" un <code>x5</code> que el addi no usa.</p>' },
       { cycle: 4, focus: 'hazard', note: '<p>El <code>lw</code> (destino <code>x5</code>) está en EX y el <code>addi</code> en ID. hazard_unit compara <code>ex_rd == id_rs2</code> (5 == 5) y levanta <code>stall</code>, aunque el addi no use <code>x5</code> para nada: es un <b>stall falso</b>. Es seguro (nunca omite un stall necesario) pero cuesta un ciclo. La hazard unit solo mira números de registro, no si esos bits significan realmente un registro.</p>' },
       { cycle: 5, focus: 'idex', note: '<p>Se pierde un ciclo: hay una burbuja en EX y el addi repite ID. Nada se corrompe, solo se pierde rendimiento. Probá cambiar el 5 por un 6 en el código: el stall desaparece y el programa tarda un ciclo menos con el mismo resultado.</p>' },
       { cycle: 6, focus: 'regfile', note: '<p>Ahora el <code>add x2, x5, x1</code> está en ID mientras el <code>lw</code> escribe <code>x5</code> en WB: lo resuelve el bypass del regfile (<code>bypassA</code>). Fijate también que en EX el <code>addi x1</code> muestra un forwarding MEM/WB de su operando B: es el mismo defecto de campos crudos en forward_unit, pero ahí es inofensivo, porque el mux elige un valor que la ALU no usa (el operando B del addi es el inmediato).</p>' },
       { cycle: 7, focus: 'forward', note: '<p>En EX el add toma <code>x1</code> por forwarding EX/MEM (el addi está en MEM) y <code>x5</code> ya llegó por el regfile. <b>Cómo se corrige:</b> decodificar desde el opcode dos bits, <code>uses_rs1</code> y <code>uses_rs2</code> (rs2 lo usan solo R, S y B), y exigir su valor en la comparación. Con eso el stall falso desaparece sin tocar el resto.</p>' },
     ],
-    explainVerification: '<p>Los valores finales (<code>x2 = 104</code>, <code>x5 = 99</code>) son <i>correctos</i>: ese es el punto. El stall falso no cambia el resultado, solo el tiempo: el programa tarda 11 ciclos en vez de 10. Por eso un testbench que solo compara estados finales (como los del repo) no lo detecta; hay que medir ciclos o inspeccionar los flags del pipeline en el dump (la palabra 13 trae <code>stall</code> y los códigos de forwarding).</p><p>Es un buen recordatorio de qué prueba cada tipo de test: la corrección funcional se verifica con el estado final, el rendimiento con el CPI.</p>',
+    explainVerification: '<p>Los valores finales (<code>x2 = 104</code>, <code>x5 = 99</code>) son <i>correctos</i>: ese es el punto. El stall falso no cambia el resultado, solo el tiempo: el programa tarda 11 ciclos en vez de 10. Por eso un test que solo compara estados finales no lo detecta: hace falta medir ciclos, como la capa <i>rendimiento</i> del repo.</p><p>Arreglarlo es fácil (mirar si la instrucción usa ese registro), pero en el repo se midió: ahorra 0,2 % de ciclos en la suite oficial y nada en los programas, así que quedó como variante.</p><p>Es un buen recordatorio de qué prueba cada tipo de test: la corrección funcional se verifica con el estado final, el rendimiento con el CPI.</p>',
     expect: { regs: { x1: 5, x2: 104, x5: 99, x6: 99 }, mem: { 0: 99 } },
   },
   {
     id: 'programa-completo',
     title: 'Programa de prueba completo',
     level: 'Avanzado',
-    summary: 'El programa de prueba del repo (host/tests/pipeline_test.s): mezcla aritmética, memoria, forwarding, un load-use, saltos y un loop.',
+    summary: 'El programa de prueba del repo (programs/pipeline_test.s): aritmética, memoria, forwarding, un load-use, saltos y un loop. En la placa tarda los mismos 83 ciclos.',
     code: '__PIPELINE_TEST__',
     steps: [
-      { cycle: 0, focus: 'pc', note: '<p>Este es el mismo programa con el que los testbenches del repo comprueban el procesador (<code>pipeline_prog.hex</code>, generado por el modelo de referencia en Python). Recorre todas las categorías de las lecciones: aritmética, dependencias a distintas distancias, un load-use, branches tomados y no tomados, JAL, JALR, loads/stores parciales, shifts con negativos y un loop. Ejecutalo paso a paso y mirá qué evento aparece en cada ciclo.</p>' },
+      { cycle: 0, focus: 'pc', note: '<p>Es el programa con el que el testbench del sistema y la capa <i>placa</i> prueban el CPU. Recorre todas las categorías de las lecciones: aritmética, dependencias a distintas distancias, un load-use, branches tomados y no tomados, JAL, JALR, loads/stores parciales, shifts con negativos y un loop. Ejecutalo paso a paso y mirá qué evento aparece en cada ciclo.</p>' },
       { cycle: 5, focus: 'forward', note: '<p>Con la secuencia <code>add x3, x1, x2</code> → <code>sub x4, x3, x1</code> aparece una dependencia a distancia 1: el <code>sub</code> toma <code>x3</code> por EX/MEM mientras el add está en MEM. Un ciclo antes, el propio add había combinado dos fuentes: <code>x2</code> por EX/MEM (distancia 1) y <code>x1</code> por MEM/WB (distancia 2).</p>' },
       { cycle: 7, focus: 'hazard', note: '<p>El único load-use real del programa: <code>lw x5, 0(x0)</code> seguido de <code>add x6, x5, x5</code>. hazard_unit frena un ciclo y en el ciclo 9 el add toma <code>x5</code> por MEM/WB en los dos operandos.</p>' },
       { cycle: 12, focus: 'branch', note: '<p>El <code>bne x6, x3, L1</code> sí se toma (x6 = 30, x3 = 15) y descarta la <code>addi x7, x0, 99</code>: por eso <code>x7</code> termina en 3 (1 + 2) y no en 101. El <code>beq</code> anterior (ciclo 10) no se tomó.</p>' },
       { cycle: 18, focus: 'flush', note: '<p><code>jal x9, F</code> salta sobre una <code>addi x10, x0, 77</code> que nunca debe ejecutarse (x10 queda en 0), y deja en x9 la dirección de retorno 0x3C. Más adelante el <code>jalr x13, 0(x12)</code> salta a la dirección 80 en forma absoluta, salteando la <code>addi x14</code>.</p>' },
       { cycle: 45, focus: 'branch', note: '<p>Empieza el loop: <code>blt x29, x0, loop</code> se toma varias veces (cada vez, 2 burbujas). El loop suma 1+2+...+6 en <code>x27 = 21</code>. Contá los redirects totales en el cronograma: son 9 en este programa, 18 burbujas, más 1 stall.</p>' },
-      { cycle: 83, focus: 'memwb', note: '<p>El <code>ebreak</code> retira: 61 instrucciones en 84 ciclos, CPI ≈ 1,38. Los 23 ciclos extra son los 4 de llenado, las 18 burbujas de los 9 saltos tomados y el único stall. Nada después del ebreak (<code>addi x31</code>, <code>sw x31</code>) se ejecutó.</p>' },
+      { cycle: 83, focus: 'memwb', note: '<p>El <code>ebreak</code> retira: 61 instrucciones en 83 ciclos, CPI ≈ 1,36, exactamente lo que se mide en la placa. Los ciclos extra son el llenado, las 18 burbujas de los 9 saltos tomados y el único stall. Nada después del ebreak (<code>addi x31</code>, <code>sw x31</code>) se ejecutó.</p>' },
     ],
-    explainVerification: '<p>Los 26 valores distintos de cero de los registros y las 4 palabras de memoria que quedan escritas son los mismos que calcula un simulador de una instrucción por vez (el modelo de referencia en Python del repo). Que coincidan para un programa que mezcla casi todas las instrucciones, hazards y saltos es una evidencia fuerte, aunque no una prueba, de que el pipeline es equivalente a un monociclo.</p><p>Los ceros también cuentan: <code>x10 = 0</code> y <code>x14 = 0</code> (saltadas por JAL y JALR), <code>x31 = 0</code> y <code>mem[5] = 0</code> (después del ebreak). Un testbench autoverificable compara todo contra el esperado y reporta solo las diferencias.</p>',
+    explainVerification: '<p>Los 26 valores distintos de cero de los registros y las 4 palabras de memoria que quedan escritas son los mismos que calcula un modelo de una instrucción por vez. Que coincidan es una evidencia fuerte, pero no una prueba: un programa no cubre todos los casos. La prueba para <i>cualquier</i> programa la da riscv-formal (ver <a href="#/verificacion">Verificación</a>).</p><p>Los ceros también cuentan: <code>x10 = 0</code> y <code>x14 = 0</code> (saltadas por JAL y JALR), <code>x31 = 0</code> y <code>mem[5] = 0</code> (después del ebreak). Un testbench autoverificable compara todo contra el esperado y reporta solo las diferencias.</p>',
     expect: {
       regs: {
         x1: 5, x2: 10, x3: 15, x4: 10, x5: 15, x6: 30, x7: 3, x8: 0x12345678, x9: 0x3c, x10: 0, x11: 0x40, x12: 0x50, x13: 0x4c,

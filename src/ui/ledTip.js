@@ -4,7 +4,7 @@ import { githubUrl } from '../content/repo.js';
 const LED_URL = githubUrl('top/top_riscv.v', 'assign:o_led');
 const LEDS = {
   halt: { name: 'HALT', bit: 'o_led[2]', sig: 'cpu_halt', color: '#e5533d',
-    text: '<b>cpu_halt</b> (viene de <code>wb_halt</code>): un <code>ebreak</code> o <code>ecall</code> llegó a WB y congeló el CPU. Queda prendido hasta que se resetea.' },
+    text: '<b>cpu_halt</b> (viene de <code>wb_halt</code>): un <code>ebreak</code>, un <code>ecall</code> o un trap llegó a WB y congeló el CPU. Queda prendido hasta que se resetea. En la placa real, LD10..LD15 muestran además los eventos del pipeline (forwarding, stall, flush, excepción).' },
   rst: { name: 'RST', bit: 'o_led[1]', sig: 'cpu_reset', color: '#f0a53a',
     text: '<b>cpu_reset</b>: reset del CPU. Se activa con el botón, con el comando <code>X</code> y mientras dura la carga de un programa (<code>L</code>).' },
   en: { name: 'EN', bit: 'o_led[0]', sig: 'cpu_enable', color: '#2fd18a',

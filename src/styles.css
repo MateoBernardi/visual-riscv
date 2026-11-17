@@ -405,7 +405,7 @@ details.more > summary::before { content: '▸ '; } details.more[open] > summary
   .et-t { writing-mode: vertical-rl; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
   .et-ch { font-size: 16px; line-height: 1; transition: transform .2s; }
   .edge-tab:not(.open) .et-ch { transform: rotate(180deg); }
-  .app[data-view='home'] .edge-tab, .app[data-view='debug'] .edge-r { display: none; }
+  .app[data-view='home'] .edge-tab, .app[data-view='verificacion'] .edge-tab, .app[data-view='debug'] .edge-r { display: none; }
 
   .app[data-view] .scene-tools { top: 80px; bottom: auto; right: calc(14px + var(--rw)); }
   .app[data-view='debug'] .scene-tools { top: auto; bottom: 14px; right: 14px; }

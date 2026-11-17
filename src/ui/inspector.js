@@ -27,7 +27,7 @@ export function createInspector(root, cb = {}) {
   root.append(box);
   let key = null;
   let live = { rows: [], fsm: null, graph: null, focusLive: null, timer: null };
-  const openState = new Map([['Desde cero', true], ['En este proyecto', true]]);
+  const openState = new Map([['Por qué esta elección', true]]);
 
   function disposeLive() {
     if (live.timer) clearInterval(live.timer);
@@ -343,7 +343,8 @@ export function createInspector(root, cb = {}) {
     const ex = (view && view.explain) || null;
     if (!view && info && info.summary) body.append(h('div', { class: 'summary prose', html: info.summary }));
 
-    if (ex && ex.firstPrinciples) body.append(section('Desde cero', h('div', { class: 'prose', html: ex.firstPrinciples })));
+    // primero el por qué; la teoría desde cero y el detalle del RTL quedan plegados
+    if (ex && ex.whyThisChoice) body.append(section('Por qué esta elección', h('div', { class: 'prose', html: ex.whyThisChoice })));
     if (ex && ex.inThisProject) {
       const chips = h('div', { class: 'chips gh-chips' });
       if (view) {
@@ -354,7 +355,7 @@ export function createInspector(root, cb = {}) {
     } else if (view) {
       body.append(section('En este proyecto', h('div', { class: 'chips gh-chips' }, ext(fileUrl(view.file), `${view.file} ${GH}`))));
     }
-    if (ex && ex.whyThisChoice) body.append(section('Por qué esta elección', h('div', { class: 'prose', html: ex.whyThisChoice })));
+    if (ex && ex.firstPrinciples) body.append(section('Desde cero', h('div', { class: 'prose', html: ex.firstPrinciples })));
     if (alt && ((alt.options && alt.options.length) || alt.current)) {
       body.append(section('Otras opciones', buildAlt(alt), { count: (alt.options || []).length || null }));
     }

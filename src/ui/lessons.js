@@ -105,6 +105,7 @@ export function createLessons(root, cb = {}) {
     const same = lessons.filter((x) => x.track === l.track);
     const idx = same.indexOf(l);
     const next = l.next ? lessons.find((x) => x.id === l.next) : null;
+    const prev = idx > 0 ? same[idx - 1] : null;
     box.append(
       h('div', { class: 'lesson-top' },
         h('button', { class: 'btn small ghost', type: 'button', onclick: back }, '‹ Todas las lecciones'),
@@ -128,9 +129,12 @@ export function createLessons(root, cb = {}) {
         h('ul', { class: 'repo-list' }, l.repo.map((r) => h('li', {}, h('a', { href: r.href, target: '_blank', rel: 'noopener' }, r.label + ' ↗'), r.note ? h('span', { class: 'muted' }, ' — ' + r.note) : null)))));
     }
     box.append(article,
-      h('div', { class: 'lesson-actions' },
-        l.exampleId ? h('button', { class: 'btn primary', type: 'button', onclick: () => cb.onLoadExample && cb.onLoadExample(l.exampleId, l) }, 'Cargar ejemplo') : null,
-        next ? h('button', { class: 'btn accent', type: 'button', onclick: () => open(next.id) }, 'Siguiente lección ›') : null));
+      h('div', { class: 'lesson-actions lesson-nav' },
+        prev ? h('button', { class: 'btn ghost', type: 'button', title: prev.title, onclick: () => open(prev.id) }, '‹ Anterior') : null,
+        l.exampleId ? h('button', { class: 'btn primary', type: 'button', title: 'Abre el simulador con el ejemplo de esta lección. Para volver: "Volver a la lección" o el botón Atrás del navegador.', onclick: () => cb.onLoadExample && cb.onLoadExample(l.exampleId, l) }, 'Verlo en el simulador') : null,
+        h('span', { class: 'spacer' }),
+        next ? h('button', { class: 'btn accent', type: 'button', title: next.title, onclick: () => open(next.id) }, 'Siguiente ›')
+          : h('button', { class: 'btn ghost', type: 'button', onclick: back }, 'Todas las lecciones')));
   }
 
   function update(d = {}) {
@@ -139,5 +143,5 @@ export function createLessons(root, cb = {}) {
     renderView();
     if (d.scrollTo) requestAnimationFrame(() => { const el = box.querySelector('#trk-' + d.scrollTo); if (el) el.scrollIntoView({ block: 'start' }); });
   }
-  return { update, open };
+  return { update, open, back, activeId: () => activeId };
 }

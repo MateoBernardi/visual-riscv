@@ -22,11 +22,11 @@ describe('trace de la debug unit', () => {
     expect(Array.from(dbg.pipe.imem.slice(0, res.words.length))).toEqual(Array.from(res.words));
     expect(dbg.state).toBe('IDLE');
   });
-  it('D devuelve 346 bytes decodificables', () => {
+  it('D devuelve 362 bytes decodificables', () => {
     const dbg = mk();
     const tr = runTrace(dbg, [0x44]);
-    expect(tr.tx.length).toBe(346);
-    expect(tr.items.filter((i) => i.tx).length).toBe(346);
+    expect(tr.tx.length).toBe(362);
+    expect(tr.items.filter((i) => i.tx).length).toBe(362);
     expect(() => decodeDump(Uint8Array.from(tr.tx))).not.toThrow();
   });
   it('S avanza un ciclo', () => {

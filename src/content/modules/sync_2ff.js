@@ -20,11 +20,11 @@ export default {
       <p>Una señal que viene de <b>afuera</b> (el botón, la línea RX de la PC) cambia en cualquier instante, sin relación con nuestro reloj. A veces va a cambiar justo dentro de la ventana prohibida de setup/hold. Entonces el flip-flop queda en un estado intermedio, ni 0 ni 1: es la <b>metaestabilidad</b>. No es un error de diseño, es física: como una bolita en la punta de una colina, termina cayendo para algún lado, pero tarda un tiempo impredecible (a veces más que un ciclo).</p>
       <p>Si ese valor dudoso llega a lógica que lo reparte a muchos flip-flops, cada uno puede interpretarlo distinto: unos ven 0 y otros 1, y la FSM se rompe. La solución no elimina el problema, lo hace <b>improbable</b>: se pone un segundo flip-flop detrás del primero. El primero puede quedar metaestable, pero tiene un ciclo entero para resolverse antes de que el segundo lo capture. La probabilidad de que siga indeciso tras un ciclo completo es astronómicamente baja (años entre fallas). Y toda la lógica usa solo la salida del segundo.</p>`,
     inThisProject: `
-      <p>Dos flip-flops en cadena: ${L('sync_reg')} <code>[1:0]</code>, con <code>sync_reg &lt;= {sync_reg[0], i_async}</code>. La salida ${L('o_sync')} es <code>sync_reg[1]</code>. El costo es 2 ciclos de latencia (40 ns a 50 MHz), irrelevante frente al bit de la UART (~52 &micro;s).</p>
+      <p>Dos flip-flops en cadena: ${L('sync_reg')} <code>[1:0]</code>, con <code>sync_reg &lt;= {sync_reg[0], i_async}</code>. La salida ${L('o_sync')} es <code>sync_reg[1]</code>. El costo es 2 ciclos de latencia (29 ns a 70 MHz), irrelevante frente al bit de la UART (~52 &micro;s).</p>
       <p>El atributo <code>(* ASYNC_REG = "TRUE" *)</code> le avisa a Vivado que ese par es un sincronizador: lo coloca en el mismo slice (cableado corto, más tiempo para resolver) y no hace análisis de timing sobre la entrada asincrónica.</p>
       <p>No tiene reset: arranca en <code>INIT</code> (valor cargado por el bitstream). Se lo usa dos veces: en el top con <code>INIT = 1</code> para la línea RX (el reposo de la UART es 1), y dentro de <code>reset_gen</code> como <code>u_btn_sync</code> (también <code>INIT = 1</code>, para que el reset arranque activo).</p>`,
     whyThisChoice: `
-      <p><b>2 FFs vs 3.</b> Con reloj de 50 MHz y una entrada a 19200 baud, dos etapas dan un MTBF enorme; una tercera etapa solo se justifica a frecuencias mucho mayores. <b>1 FF no alcanza</b> porque ese único FF alimentaría lógica directamente.</p>
+      <p><b>2 FFs vs 3.</b> Con reloj de 70 MHz y una entrada a 19200 baud, dos etapas dan un MTBF enorme; una tercera etapa solo se justifica a frecuencias mucho mayores. <b>1 FF no alcanza</b> porque ese único FF alimentaría lógica directamente.</p>
       <p><b>Sin reset en los FFs.</b> Un reset sincrónico sobre un sincronizador agregaría una compuerta delante del primer FF, justo en el camino que se quiere corto; por eso se usa <code>INIT</code>.</p>
       <p><b>Solo vale para señales de 1 bit.</b> Un bus asincrónico no se puede sincronizar bit a bit (los bits podrían resolverse en ciclos distintos); haría falta un handshake o un FIFO asincrónico.</p>`,
   },
@@ -35,7 +35,7 @@ export default {
   ],
   grid: [9, 4],
   ports: [
-    P('i_clk', 'in', 1, 'b', 'clk (50 MHz)', 'Reloj del dominio destino.'),
+    P('i_clk', 'in', 1, 'b', 'clk (70 MHz)', 'Reloj del dominio destino.'),
     P('i_async', 'in', 1, 'l', 'u_rx_sync: pin FPGA C4 (UART_TXD_IN) / u_btn_sync: botón | ~locked', 'Entrada asincrónica de 1 bit.'),
     P('o_sync', 'out', 1, 'r', 'u_uart.i_rx / reset_gen.btn_reset', 'Salida alineada con <code>i_clk</code>, con 2 ciclos de latencia.'),
   ],

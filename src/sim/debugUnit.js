@@ -236,6 +236,8 @@ export function decodeDump(x) {
     },
     mem_wb: { reg_write: bit(w[19], 0), halt: bit(w[19], 1), result: w[20], rd: w[21] & 31 },
     regs: w.slice(22, 54),
-    dmem: w.slice(54),
+    dmem: w.slice(54, 86),
+    trap: w.length > 88 ? { cause: w[86], pc: w[87], tval: w[88] } : null,
+    build: w.length > 89 ? w[89] : null,
   };
 }

@@ -29,11 +29,11 @@ export default {
         <li><b>IF</b>: el registro ${g('pc')} (con enable ${g('pc_en')}), el mux ${g('pc_next')} y la memoria ${g('u_imem')}.</li>
         <li><b>ID</b>: ${g('u_ctrl')}, ${g('u_immgen')}, ${g('u_rf')} (con <code>BYPASS=1</code>) y ${g('u_hazard')}. El sumador ${g('id_pc4')} calcula PC+4 acá, en ID, y lo lleva hasta MEM para JAL/JALR.</li>
         <li><b>EX</b>: ${g('u_fwd')} elige los muxes ${g('fwd_a_val')} / ${g('fwd_b_val')}; después ${g('alu_a')} / ${g('alu_b')} eligen PC o inmediato; ${g('u_alu')} y ${g('u_bu')} resuelven el salto. <code>redirect</code> se deriva de <code>branch_taken</code> y <code>ex_jump</code>.</li>
-        <li><b>MEM</b>: ${g('u_dmem')} y el mux ${g('mem_result_r')} (<code>mem_result</code>), que también alimenta el forwarding hacia EX.</li>
+        <li><b>MEM</b>: ${g('u_dmem')} y el mux ${g('mem_result_r')} (<code>mem_result</code>). El forwarding hacia EX usa ${g('mem_fwd')}, que es lo mismo salvo el dato de la dmem: un load se adelanta desde WB.</li>
         <li><b>WB</b>: ${g('u_mem_wb')} guarda <code>wb_result</code> ya seleccionado y lo entrega al regfile.</li>
       </ul>
-      <p>Las dependencias de control se resuelven en EX: un salto tomado o un jump anula las dos instrucciones siguientes (2 burbujas). El <b>halt</b> (ECALL/EBREAK) es pegajoso: ${g('halting_r')} y ${g('stop_fetch')} impiden que ninguna instrucción posterior al halt avance, y <code>o_halt</code> sube cuando el halt llega a WB.</p>
-      <p>Hacia afuera expone la interfaz con la debug unit: <code>i_rst</code> (reset sincrónico), <code>i_enable</code> (congela todo sin gatear el clock), el puerto de carga de la imem y el bus de debug combinacional ${g('o_dbg_data')} de 86 palabras.</p>`,
+      <p>Las dependencias de control se resuelven en EX: un salto tomado o un jump anula las dos instrucciones siguientes (2 burbujas). Una instrucción que detiene el CPU (ECALL, EBREAK o un trap: ilegal, salto o acceso desalineado, fuera de memoria) actúa en EX: no escribe nada, ${g('halting_r')} y ${g('stop_fetch')} impiden que avance nada posterior, y <code>o_halt</code> sube cuando llega a WB. La causa queda en el mapa de debug.</p>
+      <p>Hacia afuera expone la interfaz con la debug unit: <code>i_rst</code> (reset sincrónico), <code>i_enable</code> (congela todo sin gatear el clock), el puerto de carga de la imem y el bus de debug combinacional ${g('o_dbg_data')} de 89 palabras.</p>`,
     whyThisChoice: `
       <p>Un pipeline clásico de 5 etapas con forwarding es el punto de equilibrio didáctico: CPI cercano a 1 con poca lógica extra. Frente a un core de 2-3 etapas (Ibex, Cortex-M0+) rinde más por ciclo de reloj, pero obliga a manejar hazards; frente a un pipeline más profundo o con <b>predicción de saltos</b> (BTB, gshare, como BOOM) es mucho más simple, a costa de pagar 2 burbujas por cada salto tomado porque se resuelve en EX y no se predice.</p>
       <p>Mantener hazards, forwarding y flush como módulos separados (carpeta <code>flow/</code>) deja visible cada política y permite reemplazar una sin tocar las demás (por ejemplo, agregar un predictor sería cambiar ${g('pc_next')} y ${g('module:flush_unit', 'flush_unit', 'pipeline/flow/flush_unit.v')}).</p>`,
@@ -56,7 +56,7 @@ export default {
     { name: 'i_imem_wdata', dir: 'in', width: 8, side: 'l', ext: 'debug', desc: 'Byte a escribir en la imem.' },
     { name: 'i_dbg_addr', dir: 'in', width: 16, side: 'b', ext: 'debug', desc: 'Selecciona qué palabra del mapa de debug se lee (0..85).' },
     { name: 'o_dbg_data', dir: 'out', width: 32, side: 'r', ext: 'debug', desc: 'Palabra del mapa de debug seleccionada, combinacional.' },
-    { name: 'o_dbg_count', dir: 'out', width: 16, side: 'r', ext: 'debug', desc: 'Cantidad de palabras del mapa de debug (86).' },
+    { name: 'o_dbg_count', dir: 'out', width: 16, side: 'r', ext: 'debug', desc: 'Cantidad de palabras del mapa de debug (89).' },
     { name: 'o_halt', dir: 'out', width: 1, side: 'r', ext: 'debug', desc: 'Nivel: 1 cuando un ECALL/EBREAK llegó a WB.' },
   ],
   parts: [
@@ -96,8 +96,8 @@ export default {
     P('mem_result_r', 'mux', 'mem_result', 32, [17, 5], [1, 1], 'Mux 4:1 <code>mem_wb_sel</code>: ALU, dato de dmem, PC+4 o inmediato (LUI). Su salida <code>mem_result</code> va a MEM/WB y también vuelve a EX como forwarding.', { drill: 'wb_mux', live: 'snap.signals.memResult' }),
     P('u_mem_wb', 'submodule', 'mem_wb_reg', 39, [18, 2], [1, 6], 'Registro MEM/WB: guarda el resultado final, rd, reg_write y halt. Su salida alimenta la escritura del regfile y el forwarding "01".', { drill: 'mem_wb_reg', live: 'snap.latches.memwb.result' }),
     // ---------------------------------------------------------------- debug
-    P('o_dbg_data', 'mux', 'debug read mux', 32, [16, 9], [2, 1], 'Gran <code>case (i_dbg_addr)</code> combinacional que elige una de las 86 palabras del mapa de debug: PC, latches, señales de EX, registros x0..x31 y 32 palabras de dmem. Lo usa la debug unit para el comando de volcado.'),
-    P('DBG_COUNT', 'const', 'DBG_COUNT', 16, [19, 9], [1, 1], 'Localparam con la cantidad de palabras del mapa (22 + 32 + 32 = 86). La debug unit lo usa para saber cuántas pedir.'),
+    P('o_dbg_data', 'mux', 'debug read mux', 32, [16, 9], [2, 1], 'Gran <code>case (i_dbg_addr)</code> combinacional que elige una de las 89 palabras del mapa de debug (la 90.ª, la versión, la agrega el top): PC, latches, señales de EX, registros x0..x31 y 32 palabras de dmem. Lo usa la debug unit para el comando de volcado.'),
+    P('DBG_COUNT', 'const', 'DBG_COUNT', 16, [19, 9], [1, 1], 'Localparam con la cantidad de palabras del mapa (22 + 32 + 32 + 3 de la causa del trap = 89). La debug unit lo usa para saber cuántas pedir.'),
   ],
   nets: [
     // ---- IF

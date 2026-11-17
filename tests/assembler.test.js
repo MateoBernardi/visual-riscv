@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import { assemble, disasm, PIPELINE_TEST } from '../src/sim/index.js';
 
-const SIM = '/home/mateo/facu/arquitectura-de-computadoras/project_4/project_4.srcs/sim_1/new/';
-const SRC = '/home/mateo/facu/arquitectura-de-computadoras/project_4/host/tests/pipeline_test.s';
+const SIM = '/home/mateo/facu/arquitectura-de-computadoras/project_4/verif/system/';
+const SRC = '/home/mateo/facu/arquitectura-de-computadoras/project_4/programs/pipeline_test.s';
 const hexWords = (f) => fs.readFileSync(SIM + f, 'utf8').trim().split(/\s+/).map((h) => parseInt(h, 16));
 
 describe('assembler', () => {

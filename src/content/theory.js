@@ -156,7 +156,7 @@ export const EVENT_THEORY = {
       const opd = d.operand || (d.matchRs1 && d.matchRs2 ? 'A y B' : d.matchRs1 ? 'A' : d.matchRs2 ? 'B' : '');
       return `<p>Hay un load en EX que escribe ${code(xr(pick(d, 'reg', 'ex_rd')))} y la instrucción en ID lo lee${opd ? ` (operando ${opd})` : ''}. El dato recién se obtiene al final de MEM, así que este diseño espera un ciclo. hazard_unit levanta <code>stall</code>: el PC y IF/ID se congelan y se inserta una burbuja en ID/EX.</p>`;
     },
-    why: '<p>En un pipeline clásico es el único RAW que el forwarding no resuelve: el valor sale de dmem al final de MEM, pero el consumidor lo necesita al principio de EX en ese mismo ciclo, y un cable no puede viajar hacia atrás en el tiempo. Una burbuja basta: al ciclo siguiente el load está en WB y el consumidor toma el dato por forwarding MEM/WB.</p><p>Observación: en esta implementación la dmem es de lectura combinacional y su salida ya entra a <code>mem_result</code>, así que el stall es conservador (una variante sin stall sería funcional, a costa de encadenar dmem y ALU en un ciclo). Ver la lección de load-use.</p><p>El costo se puede reducir por software (el compilador pone una instrucción independiente entre el load y su uso; MIPS I lo exponía como "load delay slot") o por hardware (una memoria de menor latencia). En otros pipelines con más etapas de memoria el stall es de 2 ciclos o más.</p>',
+    why: '<p>En un pipeline clásico es el único RAW que el forwarding no resuelve: el valor sale de dmem al final de MEM, pero el consumidor lo necesita al principio de EX en ese mismo ciclo, y un cable no puede viajar hacia atrás en el tiempo. Una burbuja basta: al ciclo siguiente el load está en WB y el consumidor toma el dato por forwarding MEM/WB.</p><p>Acá la dmem se lee en el mismo ciclo, así que se podría adelantar el dato desde MEM y no frenar. Se midió: sin stall el reloj baja a 60 MHz porque la dmem queda en el camino crítico; con stall y el load adelantado desde WB se llega a 70 MHz, y gana en todos los programas. Ver la lección de load-use.</p><p>El costo se puede reducir por software (el compilador pone una instrucción independiente entre el load y su uso; MIPS I lo exponía como "load delay slot") o por hardware (una memoria de menor latencia). En otros pipelines con más etapas de memoria el stall es de 2 ciclos o más.</p>',
     rtl: "if (ex_mem_read && (ex_rd != 5'd0))\n  if ((ex_rd == id_rs1) || (ex_rd == id_rs2))\n    stall = 1'b1;",
     cost: '1 burbuja',
   },
@@ -313,11 +313,25 @@ export const EVENT_THEORY = {
     rtl: "else if (we && waddr != 5'd0) regs[waddr] <= wdata;",
     cost: '0 ciclos',
   },
+  trap: {
+    title: 'Trap en EX',
+    block: 'branch',
+    what(ev) {
+      const d = (ev && ev.data) || {};
+      const NAMES = { 0: 'salto a una dirección no alineada', 4: 'load desalineado', 5: 'load fuera de la dmem', 6: 'store desalineado', 7: 'store fuera de la dmem' };
+      return `<p>trap_unit detectó una excepción: <b>${NAMES[d.cause] || 'causa ' + d.cause}</b>${d.tval != null ? ` (dirección <code>0x${(d.tval >>> 0).toString(16).padStart(8, '0')}</code>)` : ''}. La instrucción sigue hasta WB pero con sus escrituras anuladas, y se vacían IF/ID e ID/EX.</p>`;
+    },
+    why: '<p>Sin CSRs no hay manejador al que saltar, así que todo trap es <i>fatal</i>: el CPU se detiene y la debug unit informa causa, PC y dirección. Lo importante es que sea <b>preciso</b>: lo anterior termina, la instrucción que falla no escribe y nada posterior se ejecuta. riscv-formal lo exige para cualquier programa.</p>',
+    rtl: "assign ex_stop = ex_halt | ex_exc;\n.ex_reg_write(ex_reg_write & ~ex_exc)",
+    cost: 'Fin del programa',
+  },
   haltDetected: {
-    title: 'Halt detectado (ECALL/EBREAK)',
+    title: 'Halt detectado (ECALL/EBREAK o instrucción inválida)',
     block: 'control',
-    what() {
-      return '<p>La unidad de control decodificó un opcode SYSTEM. Desde que la instrucción llega a EX se activa <code>halting</code> (una bandera pegajosa), que anula el fetch y las instrucciones más jóvenes: nada posterior a la instrucción de halt se ejecuta.</p>';
+    what(ev) {
+      const c = ev && ev.data && ev.data.cause;
+      if (c === 1 || c === 2) return `<p>En ID se detectó ${c === 2 ? 'una <b>instrucción ilegal</b>' : 'una instrucción <b>fuera de la imem</b>'}. Todavía no actúa: viaja marcada hasta EX, por si estaba en el camino equivocado de un salto (en ese caso el flush la descarta y no hay trap).</p>`;
+      return '<p>La unidad de control decodificó un ECALL o EBREAK. Desde que la instrucción llega a EX se activa <code>halting</code> (una bandera pegajosa), que anula el fetch y las instrucciones más jóvenes: nada posterior a la instrucción de halt se ejecuta.</p>';
     },
     why: '<p>Se logra una parada precisa: las instrucciones anteriores terminan normalmente y las posteriores no tienen efecto. Se detecta en EX y no en ID a propósito: una instrucción en ID todavía podría ser del camino equivocado de un branch, pero cuando una instrucción llega a EX ya se sabe que no será descartada, así que no hay halt especulativo.</p><p>El reloj no se toca: la parada se implementa con la señal de enable de los flip-flops (ver la lección de HALT).</p>',
     rtl: "SYS: halt=1;\nwire stop_fetch = ex_halt | halting;\nassign flush_if_id = flush_if_id_r | stop_fetch;",
@@ -327,9 +341,9 @@ export const EVENT_THEORY = {
     title: 'CPU detenido',
     block: 'debug',
     what() {
-      return '<p>El halt llegó a WB: todas las instrucciones anteriores se retiraron y <code>o_halt</code> sube a 1. La debug unit lo informa al host con el byte <code>H</code> (si estaba en modo run) y el LED de halt se enciende.</p>';
+      return '<p>El halt llegó a WB: todas las instrucciones anteriores se retiraron y <code>o_halt</code> sube a 1. La debug unit lo informa al host con el byte <code>H</code> (si estaba en modo run) y el LED de halt se enciende (si fue una excepción, también el de excepción).</p>';
     },
-    why: '<p>Desde el halt el host puede pedir un dump <code>D</code> de 86 palabras y ver el PC, los registros de pipeline, los 32 registros y 32 palabras de dmem. Un reset <code>X</code> deja el CPU listo para volver a ejecutar el mismo programa (la imem se conserva y la dmem tampoco se borra).</p>',
+    why: '<p>Desde el halt el host puede pedir un dump <code>D</code> de 90 palabras y ver el PC, los registros de pipeline, los 32 registros, 32 palabras de dmem y la causa del halt. Un reset <code>X</code> deja el CPU listo para volver a ejecutar el mismo programa (la imem se conserva y la dmem tampoco se borra).</p>',
     rtl: "assign o_halt = wb_halt;",
     cost: 'Fin del programa',
   },
@@ -364,7 +378,7 @@ export const GLOSSARY = {
   'CPI': '<p>Ciclos por instrucción. En un pipeline ideal vale 1. Con hazards: <code>CPI = 1 + (burbujas totales) / (instrucciones retiradas)</code>. Junto con el período del reloj y la cantidad de instrucciones fija el tiempo de ejecución: <code>T = N × CPI × T_clk</code>.</p>',
   'IPC': '<p>Instrucciones por ciclo, la inversa del CPI. Los procesadores superescalares superan 1.</p>',
   'Latencia vs throughput': '<p>Latencia: cuánto tarda una instrucción individual de punta a punta (5 ciclos acá). Throughput: cuántas instrucciones terminan por ciclo (hasta 1). El pipeline mejora el throughput, no la latencia (incluso la empeora un poco por el overhead de los registros).</p>',
-  'Camino crítico': '<p>El camino combinacional más largo entre dos registros (incluyendo ruteo en una FPGA). Define el período mínimo del reloj. En esta implementación, tras el ruteo, no cierra a 100 MHz: dmem → forwarding → ALU → branch → flush.</p>',
+  'Camino crítico': '<p>El camino combinacional más largo entre dos registros (incluyendo ruteo en una FPGA). Define el período mínimo del reloj. En esta implementación es un branch que depende de la instrucción anterior: forwarding → ALU → decisión del salto → PC, 13,7 de los 14,3 ns disponibles a 70 MHz.</p>',
   'Ruta crítica': '<p>Sinónimo de camino crítico: el camino combinacional más largo entre dos registros, que define el período mínimo del reloj.</p>',
   'Slack': '<p>Margen de tiempo de un camino: tiempo requerido menos tiempo de llegada. Positivo = cumple; negativo = falla. El peor slack de setup se llama WNS; con él se estima <code>f_max ≈ 1 / (T_clk − WNS)</code>.</p>',
   'Skew': '<p>Diferencia en el instante en que el mismo flanco de reloj llega a dos flip-flops distintos. Lo genera la distribución del reloj, no la lógica de datos; es pequeño con redes globales (BUFG) y grande si el reloj pasa por lógica común.</p>',
@@ -375,26 +389,29 @@ export const GLOSSARY = {
   'Extensión de signo': '<p>Replicar el bit más significativo de un valor corto para obtener su equivalente en más bits conservando el valor con signo (−1 de 12 bits sigue siendo −1 de 32). La extensión con ceros, en cambio, la usan lbu y lhu.</p>',
   'Little-endian': '<p>El byte menos significativo se guarda en la dirección más baja. Es el orden de RISC-V y también el de las palabras en el protocolo UART de la debug unit.</p>',
   'Byte lanes': '<p>La dmem se organiza como cuatro bancos de 8 bits (carriles), cada uno con su habilitación de escritura. Permite SB/SH/SW con un solo puerto de escritura y sin tocar los demás bytes de la palabra.</p>',
-  'Alineación': '<p>Un acceso de N bytes está alineado si su dirección es múltiplo de N. En esta implementación un acceso desalineado no genera trap: se comporta según los bits bajos de la dirección. Otros diseños lo soportan partiéndolo en dos accesos o lo tratan como excepción.</p>',
+  'Alineación': '<p>Un acceso de N bytes está alineado si su dirección es múltiplo de N. En esta implementación un load o store desalineado es una excepción (trap fatal). Otros diseños lo soportan partiéndolo en dos accesos.</p>',
+  'Trap': '<p>Una excepción (instrucción ilegal, acceso o salto desalineado, acceso fuera de memoria) o <code>ecall</code>/<code>ebreak</code>. Sin CSRs no hay manejador, así que acá todo trap es <i>fatal</i>: el CPU se detiene y la debug unit informa la causa, el PC y la dirección.</p>',
+  'riscv-formal': '<p>Framework de verificación formal que compara cada instrucción que retira el CPU con la especificación de RISC-V, para cualquier programa. Ver la sección Verificación.</p>',
+  'Mutante': '<p>Copia del diseño con un error inyectado a propósito. Si la prueba no falla con el mutante, la prueba no está mirando lo que dice mirar.</p>',
   'Halt preciso': '<p>Al detenerse, todas las instrucciones anteriores completaron y ninguna posterior produjo efectos. Facilita la depuración y es la base de las excepciones precisas.</p>',
   'Enable síncrono': '<p>Entrada de clock enable de un flip-flop: si vale 0, el flip-flop conserva su valor aunque llegue el flanco. Es la forma correcta de "pausar" un diseño sin tocar el reloj; los flip-flops de las FPGA Xilinx tienen un pin CE dedicado.</p>',
   'Clock gating': '<p>Bloquear el reloj con lógica (por ejemplo, un AND con una habilitación). En una FPGA genera skew, glitches y rompe el análisis de timing, por eso este repo pausa el CPU con enables síncronos.</p>',
-  'MMCM': '<p>Mixed-Mode Clock Manager: bloque de la FPGA que genera relojes de otras frecuencias a partir del oscilador de la placa. Acá divide 100 MHz por 2 (VCO a 1000 MHz, salida dividida por 20) y expone una señal <code>locked</code> que indica cuándo el reloj nuevo es estable.</p>',
+  'MMCM': '<p>Mixed-Mode Clock Manager: bloque de la FPGA que genera relojes de otras frecuencias a partir del oscilador de la placa. Acá convierte 100 MHz en 70 MHz (VCO a 700 MHz, salida dividida por 10) y expone una señal <code>locked</code> que indica cuándo el reloj nuevo es estable.</p>',
   'UART 8N1': '<p>Comunicación serie asincrónica con 8 bits de datos, sin paridad y 1 bit de stop (más un bit de start): 10 tiempos de bit por byte. La debug unit usa 19200 baudios.</p>',
   'Baud rate': '<p>Velocidad de la línea serie en símbolos (bits) por segundo. A 19200 baudios un bit dura unos 52 µs y un byte (10 bits) unos 521 µs. Emisor y receptor deben acordarla de antemano, porque no comparten reloj.</p>',
-  'Sobremuestreo': '<p>Muestrear la línea serie 16 veces por bit para encontrar el centro de cada bit y tolerar pequeñas diferencias de reloj. El generador de baud produce un tick cada <code>CLK/(16·baud)</code> ciclos (162 a 50 MHz y 19200).</p>',
+  'Sobremuestreo': '<p>Muestrear la línea serie 16 veces por bit para encontrar el centro de cada bit y tolerar pequeñas diferencias de reloj. El generador de baud produce un tick cada <code>CLK/(16·baud)</code> ciclos (227 a 70 MHz y 19200).</p>',
   'Metaestabilidad': '<p>Estado indefinido de un flip-flop que captura una señal justo cuando cambia. Puede tardar un tiempo impredecible en resolverse a 0 o a 1. Se mitiga pasando toda señal asincrónica por dos flip-flops en cadena (sincronizador 2FF).</p>',
   'Sincronizador 2FF': '<p>Dos flip-flops en cadena que reciben una señal asincrónica. El primero puede quedar metaestable; con un ciclo completo para resolverse, el segundo entrega un valor limpio. En este repo lo usan la línea RX y el botón de reset.</p>',
   'FIFO': '<p>Cola primero-en-entrar-primero-en-salir. La UART usa una FIFO de 4 bytes en RX y otra en TX para desacoplar la velocidad del serial de la de la debug unit; si la de TX se llena, la FSM espera.</p>',
   'FSM': '<p>Máquina de estados finitos. La debug unit es una FSM de 11 estados (IDLE, LOAD_*, DUMP_*, REPLY); en este repo cada FSM se parte en tres módulos: la lógica del próximo estado, el camino de datos combinacional y los registros.</p>',
   'Debug unit': '<p>Bloque de hardware dentro de la FPGA que interpreta comandos de la PC por UART, carga el programa en la imem, controla la ejecución (paso, corrida, pausa, reset) y devuelve el estado del CPU. Es el "depurador" del sistema.</p>',
-  'Dump': '<p>Volcado del estado del CPU hacia la PC: en este repo son 86 palabras de 32 bits (PC, registros de pipeline, señales de EX, los 32 registros y 32 palabras de dmem), precedidas por su cantidad.</p>',
+  'Dump': '<p>Volcado del estado del CPU hacia la PC: en este repo son 90 palabras de 32 bits (PC, registros de pipeline, señales de EX, los 32 registros, 32 palabras de dmem, la causa del trap y la versión del hardware), precedidas por su cantidad.</p>',
   'Memoria mapeada (MMIO)': '<p>Periféricos accesibles con loads y stores a direcciones reservadas. En este repo la UART no está mapeada: la debug unit la maneja por hardware, no el programa.</p>',
   'Harvard': '<p>Arquitectura con memoria de instrucciones y de datos separadas. Esta implementación la usa para que IF y MEM accedan a memoria en el mismo ciclo, evitando el hazard estructural.</p>',
   'BRAM': '<p>Block RAM: bloque dedicado de memoria de la FPGA (18/36 Kb). Tiene lectura <b>síncrona</b> (el dato aparece un ciclo después de presentar la dirección). Es ideal para memorias grandes, pero obliga a rediseñar IF/MEM si el pipeline espera lectura inmediata.</p>',
   'LUTRAM': '<p>RAM distribuida: memoria armada con las LUTs de la FPGA. Tiene lectura <b>asíncrona</b> y sirve para memorias chicas, como el regfile y la dmem de este repo (1 KB).</p>',
   'Testbench autoverificable': '<p>Módulo de simulación que genera estímulos, compara cada resultado contra el valor esperado y reporta solo las diferencias (PASS/FAIL). Permite correr muchos casos después de cada cambio sin mirar formas de onda.</p>',
-  'Golden model': '<p>Implementación de referencia, simple y obviamente correcta (por ejemplo, un simulador en Python que ejecuta una instrucción por vez), contra la que se compara el estado final del diseño. Acá: <code>host/tests/rv32i_model.py</code>.</p>',
+  'Golden model': '<p>Implementación de referencia, simple e independiente del diseño, contra la que se compara lo que hace el hardware. Acá: la especificación formal de RV32I (riscv-formal) y Sail, el modelo oficial de la ISA (riscv-arch-test).</p>',
   'Pseudoinstrucción': '<p>Instrucción que el ensamblador acepta pero traduce a una real: <code>nop</code>, <code>mv</code>, <code>li</code>, <code>j</code>, <code>ret</code>... No existe en el hardware.</p>',
   'Ensamblador de dos pasadas': '<p>Primera pasada: recorrer el programa contando direcciones y armar la tabla de símbolos (etiqueta → dirección). Segunda: codificar cada instrucción; en branches y jal el desplazamiento es dirección de la etiqueta menos dirección de la instrucción. Resuelve las referencias hacia adelante.</p>',
   'Superescalar': '<p>Procesador que emite varias instrucciones por ciclo. Necesita más puertos de regfile, más ALUs y lógica de hazards mucho más compleja.</p>',

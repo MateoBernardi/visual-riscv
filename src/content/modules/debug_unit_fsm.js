@@ -21,7 +21,7 @@ export default {
     firstPrinciples: `
       <p>Un protocolo por un canal serie es una conversación: la PC manda un byte y la FPGA tiene que hacer algo distinto según <i>qué</i> byte llegó y <i>en qué punto de la conversación</i> está. Eso es exactamente una <b>máquina de estados</b>: un registro que recuerda en qué paso estamos, y una lógica que, mirando ese registro y las entradas, decide el paso siguiente y qué señales activar. Sin estados no hay forma de distinguir el byte <code>0x4C</code> como comando <code>L</code> del mismo byte <code>0x4C</code> como parte de un programa.</p>
       <p>Un protocolo de debug tiene que resolver varias cosas: cómo se <b>codifica</b> cada comando (acá, un carácter ASCII), cómo se <b>delimita</b> un mensaje (comandos de un byte; la carga lleva una longitud al principio, y el dump una cuenta), cómo se <b>confirma</b> (cada comando tiene una respuesta; sin ella la PC no sabe si algo se perdió) y en qué <b>orden de bytes</b> viajan las palabras de 32 bits (little-endian: el byte menos significativo primero, como en un archivo .bin de RISC-V).</p>
-      <p>Hay otra razón para tener una FSM y no lógica suelta: la UART es <b>miles de veces más lenta</b> que el reloj. Un byte tarda ~520 &micro;s (&asymp; 26 000 ciclos a 50 MHz), así que la mayor parte del tiempo la FSM está <i>esperando</i> (self-loops condicionados a <code>rx_empty</code> o <code>tx_full</code>). La FSM no usa un timer: simplemente se queda en su estado hasta que el FIFO le avisa que hay un byte o lugar.</p>
+      <p>Hay otra razón para tener una FSM y no lógica suelta: la UART es <b>miles de veces más lenta</b> que el reloj. Un byte tarda ~520 &micro;s (&asymp; 36 000 ciclos a 70 MHz), así que la mayor parte del tiempo la FSM está <i>esperando</i> (self-loops condicionados a <code>rx_empty</code> o <code>tx_full</code>). La FSM no usa un timer: simplemente se queda en su estado hasta que el FIFO le avisa que hay un byte o lugar.</p>
       <p>Y como la FSM es <b>combinacional</b> (el registro de estado vive en <code>debug_unit_regs</code>), en cada ciclo calcula dos cosas a la vez: el <i>próximo estado</i> y las <i>salidas de control</i>. Cada salida arranca en 0 al principio del <code>always @(*)</code> y solo se pone en 1 en las ramas que la necesitan; así no se generan latches y los pulsos duran exactamente un ciclo.</p>`,
     inThisProject: `
       <p><b>Comandos</b> (localparams): ${L('CMD_LOAD', 'CMD_LOAD')} = 'L' (0x4C), ${L('CMD_STEP', 'CMD_STEP')} = 'S' (0x53), ${L('CMD_RUN', 'CMD_RUN')} = 'R' (0x52), ${L('CMD_PAUSE', 'CMD_PAUSE')} = 'P' (0x50), ${L('CMD_RESET', 'CMD_RESET')} = 'X' (0x58), ${L('CMD_DUMP', 'CMD_DUMP')} = 'D' (0x44). <b>Respuestas</b>: ${L('RSP_OK', 'RSP_OK')} = 'K' (0x4B), ${L('RSP_ERR', 'RSP_ERR')} = 'E' (0x45), ${L('RSP_HALT', 'RSP_HALT')} = 'H' (0x48), ${L('RSP_UNK', 'RSP_UNK')} = '?' (0x3F).</p>
@@ -32,7 +32,7 @@ export default {
     whyThisChoice: `
       <p><b>Estilo de dos/tres procesos vs. un solo <code>always @(posedge clk)</code>.</b> Con un único bloque secuencial se escribe menos, pero cada asignación mezcla "qué sigue" con "qué se guarda", y es fácil que un estado olvide mantener un registro. Acá la FSM solo produce <code>*_next</code> y los valores por defecto están al comienzo, por lo que es imposible inferir un latch. Se paga con más puertos (cerca de 40) y tres archivos.</p>
       <p><b>Moore para <code>loading</code>/<code>dumping</code>, Mealy para el resto.</b> Si <code>o_cpu_reset</code> dependiera de la entrada (Mealy), un glitch en <code>i_rx_empty</code> podría resetear el CPU; al calcularlo solo con el registro de estado, la salida es estable todo el ciclo. En cambio <code>o_rx_read</code> tiene que ser Mealy: debe valer 1 <i>en el mismo ciclo</i> en que se decodifica el byte para no perder un ciclo por byte.</p>
-      <p><b>Un estado por byte esperado (LOAD_LEN_LO, LOAD_LEN_HI...) vs. un contador genérico.</b> Los estados hacen el protocolo auto-documentado; el costo es que cuatro estados casi iguales esperan un byte. Para los 4 bytes de una palabra de dump se usó un contador (<code>byte_idx</code>) porque se repite 86 veces.</p>
+      <p><b>Un estado por byte esperado (LOAD_LEN_LO, LOAD_LEN_HI...) vs. un contador genérico.</b> Los estados hacen el protocolo auto-documentado; el costo es que cuatro estados casi iguales esperan un byte. Para los 4 bytes de una palabra de dump se usó un contador (<code>byte_idx</code>) porque se repite 90 veces.</p>
       <p><b>Sin timeout.</b> Si la PC manda un <code>L</code> y se cuelga, la FSM espera para siempre en LOAD_*; la única salida es el reset del sistema. Añadir un timeout agregaría un contador; para un debugger manual no se justificó.</p>
       <p><b>Una respuesta por comando, pero el dump no tiene fin explícito.</b> La PC sabe cuántos bytes esperar leyendo <code>count_lo count_hi</code> al inicio.</p>`,
   },
@@ -97,7 +97,7 @@ export default {
     },
     {
       id: 'dumping', kind: 'logic', label: 'dumping (OR de 5 estados)', width: 1, symbol: 'dumping', at: [2, 2], size: [3, 1], live: 'dbg.dumping',
-      desc: '<p>1 en DUMP_CNT_LO, DUMP_CNT_HI, DUMP_ADDR, DUMP_LATCH y DUMP_BYTE. Se usa para <b>congelar</b> el CPU: así los 86 valores que se leen son una foto coherente, no cambian entre palabra y palabra.</p>',
+      desc: '<p>1 en DUMP_CNT_LO, DUMP_CNT_HI, DUMP_ADDR, DUMP_LATCH y DUMP_BYTE. Se usa para <b>congelar</b> el CPU: así los 90 valores que se leen son una foto coherente, no cambian entre palabra y palabra.</p>',
     },
     {
       id: 'o_state_next', kind: 'fsm', label: 'case (i_state)', width: 4, symbol: 'o_state_next', at: [5, 1], size: [4, 5], live: 'dbg.state',
@@ -172,7 +172,7 @@ export default {
         outputs: ['si ~i_tx_full: o_tx_write=1 (o_data_to_write = reply)'],
         effect: E('Sin cambios: ya quedó definido por el comando (p. ej. step/run).', 'Sin cambios.', 'Encola 1 byte en TX (la respuesta).') },
       { name: 'DUMP_CNT_LO', code: 6, pos: [0.15, 0.9],
-        desc: 'Primer byte de la respuesta al dump: la parte baja de <code>i_dbg_count</code> (86 = 0x56).',
+        desc: 'Primer byte de la respuesta al dump: la parte baja de <code>i_dbg_count</code> (90 = 0x5A).',
         outputs: ['dumping=1 (o_cpu_enable=0)', 'si ~i_tx_full: o_tx_write=1, o_send_count_lo=1'],
         effect: E('Congelado (enable=0), pero no reseteado.', 'Sin cambios.', 'Encola el byte bajo de la cuenta.') },
       { name: 'DUMP_CNT_HI', code: 7, pos: [0.3, 0.9],
@@ -190,7 +190,7 @@ export default {
       { name: 'DUMP_BYTE', code: 10, pos: [0.8, 0.9],
         desc: 'Envía los 4 bytes de la palabra, empezando por el menos significativo (little-endian), desplazando la palabra 8 bits por vez. Tras el 4.º byte: si era la última palabra vuelve a IDLE, si no incrementa <code>dbg_addr</code> y va a DUMP_ADDR.',
         outputs: ['dumping=1', 'si ~i_tx_full: o_tx_write=1, o_send_word=1, o_word_shift=1, o_byte_idx_inc=1', 'si i_byte_last & ~i_dbg_last: o_dbg_addr_inc=1'],
-        effect: E('Congelado hasta salir a IDLE; luego vuelve al modo previo (run/pausa).', 'Sin cambios.', 'Encola 1 byte de la palabra por transición (4 por palabra, 86 palabras).') },
+        effect: E('Congelado hasta salir a IDLE; luego vuelve al modo previo (run/pausa).', 'Sin cambios.', 'Encola 1 byte de la palabra por transición (4 por palabra, 90 palabras).') },
     ],
     transitions: [
       { from: 'IDLE', to: 'REPLY', cond: 'i_run && i_cpu_halt', caseLabel: 'IDLE',

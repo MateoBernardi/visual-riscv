@@ -5,8 +5,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const DEFAULT_RTL_ROOT = '/home/mateo/facu/arquitectura-de-computadoras/project_4/project_4.srcs/sources_1/new';
-export const PREFIX = 'project_4/project_4.srcs/sources_1/new/';
+export const DEFAULT_RTL_ROOT = '/home/mateo/facu/arquitectura-de-computadoras/project_4/rtl';
+export const PREFIX = 'project_4/rtl/';
 
 const KEYWORDS = new Set(('module endmodule input output inout reg wire assign always initial if else begin end case casex casez endcase default for while ' +
   'function endfunction task endtask generate endgenerate genvar integer localparam parameter defparam posedge negedge or and nand nor xor xnor not buf ' +

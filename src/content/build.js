@@ -12,97 +12,46 @@
 //   - `expect.mem`: índice de PALABRA de dmem -> valor.
 //   - `stats`: con forwarding activado. cycles = 4 + retired + stalls + 2·redirects (4 de llenado, 2 burbujas por salto tomado).
 //   Cualquiera de estos programas se puede pegar en el editor de ensamblador de la web y ejecutar.
-import { githubUrl } from './repo.js';
+import { githubUrl, REPO } from './repo.js';
 
-const TB = 'https://github.com/MateoBernardi/arquitectura-de-computadoras/blob/tp3-RISCV/project_4/project_4.srcs/sim_1/new/';
-const HOST = 'https://github.com/MateoBernardi/arquitectura-de-computadoras/blob/tp3-RISCV/project_4/host/';
+const P4 = `https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.ref}/project_4/`;
 const a = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
 const gh = (file, sym, text) => a(githubUrl(file, sym), text);
 
 export const BUILD_CHECKLIST = [
   // ---- Entender
-  {
-    id: 'etapas-y-registros', group: 'Entender', step: 'build-3-segmentar',
-    title: 'Puedo explicar qué hace cada etapa y qué viaja en cada registro de pipeline',
-    detail: `<p>Test rápido: ¿qué pasaría si en WB usaras el <code>rd</code> que está hoy en IF/ID? Pertenece a otra instrucción, tres posiciones más atrás. El número de registro destino tiene que viajar desde ID hasta MEM/WB junto con el dato. En este repo, ${gh('pipeline/regs/pipe_reg.v', 'module:id_ex_reg', 'pipe_reg.v')} lista exactamente qué lleva cada frontera.</p>`,
-  },
-  {
-    id: 'tabla-codificacion', group: 'Entender', step: 'build-1-subconjunto',
-    title: 'Tengo mi propia tabla de codificación: opcode, funct3 y funct7 de cada instrucción',
-    detail: `<p>Armala vos desde la especificación oficial, no copiada de otro lado: te sirve tres veces (decodificador, ensamblador y desensamblador). Referencia de cómo queda en este repo: ${gh('pipeline/2_decode/control.v', 'module:control', 'control.v')}.</p>`,
-  },
-  {
-    id: 'tabla-inmediatos', group: 'Entender', step: 'build-2-monociclo',
-    title: 'Tengo la tabla de armado del inmediato para I, S, B, U y J',
-    detail: `<p>Una tabla con los 32 bits del inmediato final en columnas y los cinco formatos en filas; en cada celda, qué bit de la instrucción va ahí (o "signo", o "0"). Esa tabla <i>es</i> el diseño del módulo. Ver ${gh('pipeline/2_decode/immgen.v', 'module:immgen', 'immgen.v')}.</p>`,
-  },
-  {
-    id: 'tabla-control', group: 'Entender', step: 'build-2-monociclo',
-    title: 'Tengo la tabla de señales de control para cada instrucción',
-    detail: '<p>Filas = instrucciones, columnas = señales (<code>reg_write</code>, <code>alu_src</code>, <code>mem_read</code>, <code>mem_write</code>, <code>branch</code>, <code>jump</code>, <code>wb_sel</code>, <code>alu_op</code>, <code>imm_sel</code>...). Incluí las que no existen en el libro y tu diseño necesita (por ejemplo, una bandera de halt). Las fichas de instrucción de esta web muestran la tabla de este repo.</p>',
-  },
+  { id: 'etapas-y-registros', group: 'Entender', step: 'build-monociclo',
+    title: 'Puedo explicar qué viaja en cada registro de pipeline y por qué',
+    detail: `<p>Test rápido: ¿qué pasaría si WB usara el <code>rd</code> que hoy está en IF/ID? Sería el de otra instrucción. Todo lo que una instrucción necesita más adelante viaja con ella. Ver ${gh('pipeline/regs/pipe_reg.v', 'module:pipe_reg', 'pipe_reg.v')}.</p>` },
+  { id: 'tablas', group: 'Entender', step: 'build-isa',
+    title: 'Tengo mis tablas de codificación, inmediatos y señales de control',
+    detail: `<p>Hechas por vos desde la spec. Son el diseño de ${gh('pipeline/2_decode/control.v', 'module:control', 'control.v')} e ${gh('pipeline/2_decode/immgen.v', 'module:immgen', 'immgen.v')}, y después del ensamblador.</p>` },
   // ---- Diseñar
-  {
-    id: 'datapath-dibujado', group: 'Diseñar', step: 'build-4-hazards-datos',
-    title: 'Dibujé el datapath completo con registros de pipeline, forwarding y detección de riesgos',
-    detail: '<p>En papel, antes del código. Dibujá la unidad de forwarding y la de detección de riesgos como bloques separados y anotá qué entradas necesita cada una y de qué registros salen. El tablero 3D de esta web es el dibujo de este repo.</p>',
-  },
-  {
-    id: 'saltos-etapa', group: 'Diseñar', step: 'build-5-hazards-control',
-    title: 'Decidí en qué etapa resuelvo branches, jal y jalr, y lo justifiqué',
-    detail: '<p>Justificalo con la tabla de costos: resolver en EX descarta 2 instrucciones y no cuesta hardware; resolver en ID descarta 1 pero necesita comparador, sumador y forwarding hacia ID. JAL, JALR y los branches no tienen por qué resolverse en la misma etapa. Este repo resuelve todo en EX.</p>',
-  },
-  {
-    id: 'memorias-lectura', group: 'Diseñar', step: 'build-6-memorias-fpga',
-    title: 'Decidí cómo encaja la lectura de las memorias (combinacional o síncrona) en IF y MEM',
-    detail: `<p>Una BRAM de lectura síncrona entrega el dato un ciclo después de presentar la dirección; una LUTRAM, en el mismo ciclo. Esta decisión cambia el diseño de IF y de MEM. Este repo usa memorias de lectura combinacional (${gh('pipeline/1_fetch/imem.v', 'module:imem', 'imem.v')}, ${gh('pipeline/4_memory/dmem.v', 'module:dmem', 'dmem.v')}), que caben como RAM distribuida por ser de 1 KB.</p>`,
-  },
-  {
-    id: 'pausa-sin-reloj', group: 'Diseñar', step: 'build-8-debug-unit',
-    title: 'Decidí cómo se detiene y avanza el procesador sin tocar el reloj',
-    detail: `<p>Lista qué módulos obedecen la señal de habilitación (pipeline, regfile, memoria de datos) y cuáles tienen que seguir funcionando siempre (UART, debug unit). Este repo usa un <code>enable</code> síncrono en todos los registros del CPU: ${gh('pipeline/regs/pipe_reg.v', 'module:if_id_reg', 'pipe_reg.v')}.</p>`,
-  },
-  {
-    id: 'halt-codificacion', group: 'Diseñar', step: 'build-8-debug-unit',
-    title: 'Elegí la codificación de HALT y cómo se vacía el pipeline',
-    detail: '<p>Tres opciones: un opcode no usado, <code>ebreak</code> o la palabra 0. Y la pregunta de fondo: ¿en qué etapa lo detectás para no detenerte por una instrucción especulativa (la que sigue a un branch tomado)? Este repo usa ebreak/ecall (cualquier opcode SYSTEM) y lo detecta en EX.</p>',
-  },
-  {
-    id: 'protocolo-fsm', group: 'Diseñar', step: 'build-8-debug-unit',
-    title: 'Definí el protocolo UART y dibujé el diagrama de estados de la debug unit',
-    detail: `<p>Comandos, delimitación de mensajes, confirmaciones (ACK/NAK), orden de bytes y qué pasa con un comando desconocido. Dibujá los estados antes de escribir una línea. Este repo: ${gh('debug/debug_unit.v', 'module:debug_unit', 'debug_unit.v')} documenta el protocolo en su cabecera.</p>`,
-  },
-  {
-    id: 'casos-borde', group: 'Diseñar', step: 'build-1-subconjunto',
-    title: 'Decidí qué hace el procesador con un acceso desalineado, con un PC fuera de memoria y con un programa sin HALT',
-    detail: '<p>Son decisiones tuyas (la ISA permite trap o soporte por hardware), pero hay que tomarlas y documentarlas. Este repo no soporta accesos desalineados, deja que el PC dé la vuelta por la imem (que está llena de NOPs) y requiere un <code>ebreak</code> para terminar.</p>',
-  },
+  { id: 'saltos-etapa', group: 'Diseñar', step: 'build-hazards',
+    title: 'Decidí en qué etapa resuelvo los saltos, y lo justifiqué',
+    detail: '<p>EX descarta 2 instrucciones y no agrega hardware; ID descarta 1 pero necesita comparador y forwarding hacia ID. Este repo resuelve en EX.</p>' },
+  { id: 'memorias-lectura', group: 'Diseñar', step: 'build-memorias',
+    title: 'Decidí si las memorias se leen en el mismo ciclo o en el siguiente',
+    detail: '<p>Cambia el diseño de IF y de MEM. Este repo usa LUTRAM de lectura asíncrona.</p>' },
+  { id: 'excepciones', group: 'Diseñar', step: 'build-isa',
+    title: 'Decidí qué pasa con lo que no implemento: ilegales, desalineados, fuera de memoria',
+    detail: `<p>La ISA permite tratarlos como trap. Este repo detiene el CPU sin escribir nada e informa la causa: ${gh('pipeline/flow/trap_unit.v', 'module:trap_unit', 'trap_unit.v')}.</p>` },
+  { id: 'pausa-sin-reloj', group: 'Diseñar', step: 'build-debug',
+    title: 'Sé cómo pausar el CPU sin tocar el reloj',
+    detail: '<p>Un enable síncrono en cada registro del CPU; la UART y la debug unit siguen siempre.</p>' },
+  { id: 'protocolo-fsm', group: 'Diseñar', step: 'build-debug',
+    title: 'Definí el protocolo con la PC y dibujé la FSM de la debug unit',
+    detail: `<p>Comandos, respuestas, orden de bytes y qué pasa con un comando desconocido. Referencia: ${a(P4 + 'rtl/debug/README.md', 'README de debug/')}.</p>` },
   // ---- Preparar
-  {
-    id: 'plan-de-pruebas', group: 'Preparar', step: 'build-11-verificacion',
-    title: 'Sé cómo voy a probar cada módulo antes de integrarlo',
-    detail: '<p>Un testbench por módulo (ALU, immgen, regfile, control, UART), luego pipeline con programas cortos, luego sistema completo con una PC simulada mandando bytes, y recién después hardware (empezando por un loopback de la UART).</p>',
-  },
-  {
-    id: 'golden-model', group: 'Preparar', step: 'build-11-verificacion',
-    title: 'Tengo un modelo de referencia que ejecuta una instrucción por vez',
-    detail: `<p>Un simulador simple, en el lenguaje que prefieras, que genere el estado final esperado para cualquier programa. En este repo: ${a(HOST + 'tests/rv32i_model.py', 'host/tests/rv32i_model.py')}.</p>`,
-  },
-  {
-    id: 'placa-y-pines', group: 'Preparar', step: 'build-10-timing',
-    title: 'Identifiqué la placa, su oscilador y los pines de la UART',
-    detail: `<p>Sin la restricción de reloj y los pines correctos en el archivo <code>.xdc</code> la herramienta no puede verificar timing ni conectar nada. En este repo: ${a('https://github.com/MateoBernardi/arquitectura-de-computadoras/blob/tp3-RISCV/project_4/project_4.srcs/constrs_1/imports/Downloads/nexys4ddr_top.xdc', 'nexys4ddr_top.xdc')} (oscilador de 100 MHz, UART, LEDs y reset).</p>`,
-  },
-  {
-    id: 'camino-critico-predicho', group: 'Preparar', step: 'build-10-timing',
-    title: 'Anoté mi predicción del camino crítico y de la frecuencia objetivo',
-    detail: '<p>Antes de mirar el reporte de timing: ¿qué creés que tarda más, leer una memoria, sumar 32 bits o pasar por un mux grande? Anotalo y comparalo después. Si tu WNS es negativo, la alternativa es bajar la frecuencia o agregar un registro en ese camino.</p>',
-  },
-  {
-    id: 'git', group: 'Preparar', step: 'build-11-verificacion',
+  { id: 'plan-de-pruebas', group: 'Preparar', step: 'build-verif',
+    title: 'Sé contra qué voy a comparar cada capa',
+    detail: '<p>La spec (riscv-formal), el modelo oficial (Sail vía riscv-arch-test) y, para la placa, la simulación del propio RTL. Ver la sección <a href="#/verificacion">Verificación</a>.</p>' },
+  { id: 'placa-y-pines', group: 'Preparar', step: 'build-timing',
+    title: 'Tengo el XDC con el reloj y los pines de mi placa',
+    detail: `<p>Sin la restricción del reloj no hay análisis de timing. En este repo: ${a(P4 + 'constraints/nexys4ddr_top.xdc', 'nexys4ddr_top.xdc')}.</p>` },
+  { id: 'git', group: 'Preparar', step: 'build-verif',
     title: 'Uso control de versiones desde el primer día',
-    detail: '<p>Cuando algo que funcionaba se rompa, vas a querer saber qué cambió. Un commit por cada módulo que pasa su testbench es una buena regla.</p>',
-  },
+    detail: '<p>Un commit por módulo que pasa su prueba. Este repo además usa el commit como versión del hardware dentro del bitstream.</p>' },
 ];
 
 export const TEST_CATEGORIES = [
@@ -309,7 +258,7 @@ lbu  x6, 3(x0)          # esperado: 0xAB
 ebreak
 `,
         expect: { regs: { x4: 0x7ab, x5: 0xab000000, x6: 0xab }, mem: { 0: 0xab000000 } },
-        note: '<p>Resultado esperado según la ISA (y según el modelo de referencia en Python). Elegí a propósito un <code>rs2</code> cuyos bytes 0 y 1 son distintos (<code>0xAB</code> y <code>0x07</code>) para que un error de carril se note.</p>',
+        note: '<p>Resultado esperado según la ISA . Elegí a propósito un <code>rs2</code> cuyos bytes 0 y 1 son distintos (<code>0xAB</code> y <code>0x07</code>) para que un error de carril se note.</p>',
       },
     ],
   },

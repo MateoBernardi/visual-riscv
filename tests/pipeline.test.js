@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import { assemble, Pipeline, decodeDump, PIPELINE_TEST } from '../src/sim/index.js';
 
-const SIM = '/home/mateo/facu/arquitectura-de-computadoras/project_4/project_4.srcs/sim_1/new/';
+const SIM = '/home/mateo/facu/arquitectura-de-computadoras/project_4/verif/system/';
 const hexWords = (f) => fs.readFileSync(SIM + f, 'utf8').trim().split(/\s+/).map((h) => parseInt(h,16));
 const PROG = hexWords('pipeline_prog.hex');
 const EXP = hexWords('pipeline_exp.hex');
@@ -125,7 +125,7 @@ describe('pipeline (modo RTL)', () => {
     expect(p.regs[2]).toBe(6);
   });
 
-  it('memoria: SB/SH/SW, LB/LH/LBU/LHU, desalineados y wrap a 1KB', () => {
+  it('memoria: SB/SH/SW, LB/LH/LBU/LHU', () => {
     const p = mk(prog(`
       li x1, -2
       sw x1, 0(x0)
@@ -136,9 +136,6 @@ describe('pipeline (modo RTL)', () => {
       lbu x4, 0(x0)
       lh x5, 6(x0)
       lhu x6, 6(x0)
-      lw x7, 2(x0)
-      li x8, 1024
-      lw x9, 0(x8)
       ebreak`));
     runToHalt(p);
     expect(p.regs[2]).toBe(0xffff00fe);
@@ -146,9 +143,36 @@ describe('pipeline (modo RTL)', () => {
     expect(p.regs[4]).toBe(0xfe);
     expect(p.regs[5]).toBe(0xfffffffe);
     expect(p.regs[6]).toBe(0xfffe);
-    expect(p.regs[7]).toBe(0xffff00fe); // desalineado: se alinea
-    expect(p.regs[9]).toBe(0xffff00fe); // 1024 == 0 (wrap)
     expect(p.dmem[1]).toBe(0xfffe0000);
+    expect(p.snapshot().trap).toMatchObject({ cause: 3, fatal: false });
+  });
+
+  // traps (verif/sim/tests/traps/): causa, PC y dirección; la instrucción que falla no escribe nada
+  const trapOf = (src) => { const p = mk(prog(src)); runToHalt(p); return { p, t: p.snapshot().trap, d: [86, 87, 88].map((i) => p.dbgRead(i)) }; };
+  it('trap: lw desalineado (causa 4) no escribe rd', () => {
+    const { p, t, d } = trapOf('li x1, 7\nlw x2, 2(x0)\naddi x3, x0, 1\nebreak');
+    expect(t).toMatchObject({ cause: 4, pc: 4, tval: 2, fatal: true });
+    expect(d).toEqual([4, 4, 2]);
+    expect(p.regs[2]).toBe(0); expect(p.regs[3]).toBe(0);
+  });
+  it('trap: sb fuera de la dmem (causa 7) no escribe memoria', () => {
+    const { p, t } = trapOf('li x8, 1024\nli x1, 5\nsb x1, 0(x8)\nebreak');
+    expect(t.cause).toBe(7); expect(t.tval).toBe(1024);
+    expect(Array.from(p.dmem).every((w) => w === 0)).toBe(true);
+  });
+  it('trap: instrucción ilegal (causa 2) y ecall (causa 11)', () => {
+    expect(trapOf('addi x1, x0, 1\n.word 0x00000000\naddi x2, x0, 1').t).toMatchObject({ cause: 2, pc: 4 });
+    expect(trapOf('ecall').t).toMatchObject({ cause: 11, fatal: false });
+  });
+  it('trap: el salto a una dirección desalineada es del salto (causa 0) y el PC no queda desalineado', () => {
+    const { p, t } = trapOf('li x1, 6\njalr x2, 0(x1)\nnop\nnop');
+    expect(t).toMatchObject({ cause: 0, pc: 4, tval: 6 });
+    expect(p.regs[2]).toBe(0);
+    expect(p.pc & 3).toBe(0);
+  });
+  it('trap: una instrucción ilegal en el camino equivocado no provoca trap', () => {
+    const { t } = trapOf('j fin\n.word 0x00000000\nfin: ebreak');
+    expect(t.cause).toBe(3);
   });
 
   it('jal / jalr / auipc / lui', () => {
@@ -217,7 +241,7 @@ describe('pipeline (modo RTL)', () => {
       if (p.halted) break;
       p.step();
     }
-    const words = Array.from({ length: 86 }, (_, i) => p.dbgRead(i));
+    const words = Array.from({ length: 90 }, (_, i) => p.dbgRead(i));
     const dd = decodeDump(words);
     expect(dd.pc).toBe(0xb8);
     expect(dd.regs[3]).toBe(15);

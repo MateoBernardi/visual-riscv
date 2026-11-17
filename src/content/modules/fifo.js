@@ -45,7 +45,7 @@ export default {
   ],
   grid: [14, 9],
   ports: [
-    P('i_clk', 'in', 1, 'b', 'clk (50 MHz)', 'Reloj.'),
+    P('i_clk', 'in', 1, 'b', 'clk (70 MHz)', 'Reloj.'),
     P('i_reset', 'in', 1, 'b', 'sys_reset', 'Reset sincrónico: punteros a 0, <code>full</code>=0, <code>empty</code>=1.'),
     P('i_read_fifo', 'in', 1, 'l', 'RX_FIFO: i_read_uart (debug) / TX_FIFO: tx_done (TX)', 'Pop de la cabeza.'),
     P('i_write_fifo', 'in', 1, 'l', 'RX_FIFO: rx_done (RX) / TX_FIFO: i_write_uart (debug)', 'Push de <code>i_data_to_write</code>.'),

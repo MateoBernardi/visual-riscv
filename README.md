@@ -2,17 +2,26 @@
 
 Guía visual e interactiva para **entender el procesador RISC-V RV32I de 5 etapas** (IF, ID, EX, MEM, WB) y su **unidad
 de debug por UART**, escritos en Verilog para una placa Nexys4 DDR (repo
-[MateoBernardi/arquitectura-de-computadoras](https://github.com/MateoBernardi/arquitectura-de-computadoras), rama `tp3-RISCV`),
-y para luego **construir y verificar un RISC-V propio**. Todo corre en el navegador: un simulador ciclo a ciclo escrito en
+[MateoBernardi/arquitectura-de-computadoras](https://github.com/MateoBernardi/arquitectura-de-computadoras), carpeta `project_4`),
+y para luego **construir y verificar un RISC-V propio**. Las lecciones son cortas y explican el *por qué* de cada decisión; el
+detalle bit a bit queda en el repo y en el inspector de cada módulo. Todo corre en el navegador: un simulador ciclo a ciclo escrito en
 JavaScript reproduce el comportamiento del RTL y la escena (three.js) muestra cómo viajan los datos por cada cable.
 
 ![Load-use en modo explicación](docs/screenshots/01-load-use-explicacion.png)
 
 ## Qué incluye
 
-- **Inicio** con dos recorridos (Entender este chip / Construí tu propio RISC-V), el simulador y la consola de debug.
-- **Simulador fiel al RTL** (`src/sim/`): stalls load-use (incluido el "stall falso" del RTL), forwarding EX/MEM y MEM/WB,
-  bypass WB→ID del regfile, flush por salto/jump, halt con `ecall`/`ebreak`. Se puede volver atrás ciclo a ciclo.
+- **Inicio** con los caminos de entrada: Entender este chip, Simular, Cómo se verificó, Construí tu propio RISC-V y Debug.
+- **Simulador fiel al RTL** (`src/sim/`): stalls load-use (incluido el "stall falso" del RTL), forwarding EX/MEM (sin el dato
+  de la dmem: el load se adelanta desde WB) y MEM/WB, bypass WB→ID del regfile, flush por salto/jump, halt con `ecall`/`ebreak`
+  y **traps fatales** (instrucción ilegal, salto o acceso desalineado, acceso fuera de memoria) con causa, PC y dirección. Se
+  puede volver atrás ciclo a ciclo.
+- **Verificación**: las capas de `verif/` en el orden del flujo (RTL → síntesis → implementación → placa), qué prueba cada
+  una y por qué, y las herramientas usadas con links a sus repositorios (riscv-formal, riscv-arch-test, Sail, Yosys,
+  SymbiYosys, Verilator, Icarus, OSS CAD Suite, GCC RISC-V, Vivado).
+- **Navegación con URL**: cada vista, lección y módulo tiene su ruta (`#/lecciones/load-use`, `#/simulador/alu_tp1`,
+  `#/verificacion`...), así Atrás/Adelante del navegador vuelven al lugar anterior y cualquier lugar se puede compartir.
+  Al abrir un ejemplo desde una lección aparece "Volver a: <lección>".
 - **Dos representaciones, para no confundirse**: la *Vista general* es un diagrama simplificado del datapath (bloques
   agrupados por etapa; no es un módulo de Verilog) es la única raíz: de ahí cuelga cada módulo (incluido el bloque "CLK/RST" con
   el MMCM y el reset). Las migas dicen dónde vive cada uno en el RTL real ("en el RTL: top_riscv › u_cpu › u_alu"), y el botón
@@ -31,11 +40,12 @@ JavaScript reproduce el comportamiento del RTL y la escena (three.js) muestra c�
 - **Editor de ensamblador** RV32I con pseudoinstrucciones: se ensambla solo al escribir, con errores en la línea y
   resaltado de la instrucción de cada etapa. Opción "Cargar como en el hardware": anima la transferencia UART → debug
   unit → memoria de instrucciones.
-- **Lecciones** en una sola vista con scroll: intro, secciones, "Qué mirar en la animación", links al repo y "Cargar
-  ejemplo". El recorrido de construcción trae una lista de preparación (se guarda en el navegador) y programas de prueba por
+- **Lecciones** cortas (nueve para entender el chip, siete pasos para construir uno): intro, dos a cuatro secciones sobre
+  el porqué, "Qué mirar en la animación", links al repo, anterior/siguiente y "Verlo en el simulador". El recorrido de construcción trae una lista de preparación (se guarda en el navegador) y programas de prueba por
   categoría con su resultado esperado.
 - **LEDs de la placa** con tooltip (HALT / RST / EN y su señal en `top_riscv.v`).
-- **Vista Debug**: consola con el protocolo real de la debug unit (`L`, `S`, `R`, `P`, `X`, `D`) a 19200 baudios.
+- **Vista Debug**: consola con el protocolo real de la debug unit (`L`, `S`, `R`, `P`, `X`, `D`) a 19200 baudios; el volcado
+  tiene 90 palabras (incluye la causa del trap y la versión del hardware).
 - Glosario con tooltip, tema claro y oscuro, adaptable a móviles.
 
 | Verificación | Registros |
@@ -94,7 +104,7 @@ npm run dev      # servidor de desarrollo en http://localhost:5173
 npm test         # tests del simulador (vitest)
 npm run build    # genera dist/
 npm run preview  # sirve dist/ para probarlo
-npm run rtl-index # regenera src/content/rtl-index.json desde el RTL (RTL_ROOT=<ruta a sources_1/new>)
+npm run rtl-index # regenera src/content/rtl-index.json desde el RTL (RTL_ROOT=<ruta a project_4/rtl>)
 ```
 
 ## Deploy
@@ -125,25 +135,27 @@ docs/screenshots/     capturas
 
 ## Correspondencia entre el simulador y el RTL
 
-Las rutas son relativas a `project_4.srcs/sources_1/new/` del proyecto Vivado.
+Las rutas son relativas a `project_4/rtl/`.
 
 | Simulador (`src/sim/`) | RTL |
 | --- | --- |
-| `pipeline.js`: PC, fetch, `stopFetch` | `pc.v`, `pipeline/1_fetch/imem.v`, `pipeline/riscv_pipeline.v` |
+| `pipeline.js`: PC, fetch, `stopFetch` | `pipeline/1_fetch/imem.v`, `pipeline/riscv_pipeline.v` |
+| `pipeline.js` + `isa.js`: traps (`illegalCheck`, causas) | `pipeline/flow/trap_unit.v`, `pipeline/2_decode/illegal_check.v` |
 | `isa.js`: `decodeControl`, `immGen`, `aluCompute`, `branchTaken` | `pipeline/2_decode/control.v`, `immgen.v`, `pipeline/3_execute/alu.v`, `alu_ops.vh`, `branch_unit.v` |
 | `pipeline.js`: regfile con bypass WB→ID | `pipeline/2_decode/regfile.v` |
 | `pipeline.js`: hazard / forward / flush | `pipeline/flow/hazard_unit.v`, `forward_unit.v`, `flush_unit.v` |
 | `pipeline.js`: dmem con byte lanes | `pipeline/4_memory/dmem.v` |
 | `pipeline.js`: registros de pipeline, `dbgRead` | `pipeline/regs/pipe_reg.v`, bus de debug de `riscv_pipeline.v` |
 | `debugUnit.js`: FSM, `encodeLoad`, `decodeDump` | `debug/debug_unit_fsm.v`, `debug_unit_comb.v`, `debug_unit_regs.v` y `host/debug_protocol.py` |
-| `programs/pipeline_test.s` | programa de prueba del proyecto (`host/tests/pipeline_test.s`) |
+| `programs/pipeline_test.s` | programa de prueba del proyecto (`programs/pipeline_test.s`) |
 
 El modo "sin forwarding" del simulador es una alternativa didáctica, no existe en el RTL. Cuando el RTL y algún
 README no coinciden, el simulador sigue al RTL.
 
 ## Parámetros de URL (para depurar y capturar)
 
-`?view=sim|debug|lessons|examples|home`, `?enter=alu_tp1` (entrar a una vista interna), `?focus=part:<id>|net:<id>`, `?dock=cycles|regs|mem|verif`, `?track=entender|construir`, `?nobanner`,
+Rutas: `#/`, `#/lecciones[/<id>]`, `#/ejemplos`, `#/simulador[/<vista interna>]`, `#/debug`, `#/verificacion`.
+Parámetros: `?view=sim|debug|lessons|examples|home|verificacion`, `?enter=alu_tp1` (entrar a una vista interna), `?focus=part:<id>|net:<id>`, `?dock=cycles|regs|mem|verif`, `?track=entender|construir`, `?nobanner`,
 `?view=sim`, `?theme=dark`, `?example=load-use`, `?steps=4`, `?explain`, `?alt=hazard`,
 `?blockclick=alu`, `?script=step,step,click:alu,dbg:L,dbg:R,delay:2000,dbg:D` y `?debug` (muestra errores en pantalla).
 Con `?shot` el canvas WebGL se copia a una imagen para poder sacar capturas con Firefox headless.

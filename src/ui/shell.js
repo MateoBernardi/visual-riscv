@@ -4,6 +4,7 @@ const NAV_TIPS = {
   home: 'Presentación y por dónde empezar', lessons: 'Lecciones: ISA, pipeline, hazards, memoria, debug unit y UART',
   examples: 'Programas de ejemplo para cargar en el simulador', sim: 'Simulador ciclo a ciclo del pipeline sobre la placa 3D',
   debug: 'Consola de la debug unit: cargar, ejecutar y volcar por UART',
+  verificacion: 'Cómo se verificó el CPU: capas, herramientas y sus repositorios',
 };
 export const VIEWS = [
   ['home', 'Inicio'],
@@ -11,6 +12,7 @@ export const VIEWS = [
   ['examples', 'Ejemplos'],
   ['sim', 'Simulador'],
   ['debug', 'Debug'],
+  ['verificacion', 'Verificación'],
 ];
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
@@ -39,7 +41,7 @@ export function createShell(root, callbacks = {}) {
     return v === 'sim' ? wide() : false;
   }
   function isPanelOpen(side) {
-    if (view === 'home') return side === 'l';
+    if (view === 'home' || view === 'verificacion') return side === 'l';
     if (view === 'debug' && side === 'r') return auto.r === true;
     if (auto[side] != null) return auto[side];
     const p = prefs[view + ':' + side];
@@ -70,7 +72,7 @@ export function createShell(root, callbacks = {}) {
   const sec = (name, views) => h('section', { class: 'sec sec-' + name, 'data-v': views });
   const left = {
     home: sec('home', 'home'), lessons: sec('lessons', 'lessons'), examples: sec('examples', 'examples'),
-    editor: sec('editor', 'sim'), debug: sec('debug', 'debug'),
+    editor: sec('editor', 'sim'), debug: sec('debug', 'debug'), verificacion: sec('verificacion', 'verificacion'),
   };
   const right = { inspector: sec('inspector', 'lessons examples sim debug') };
   const leftPanel = h('aside', { class: 'panel panel-left' }, Object.values(left));
@@ -93,7 +95,7 @@ export function createShell(root, callbacks = {}) {
     h('button', { class: 'pill-btn pill-top', title: 'Qué es esta vista: un dibujo simplificado del datapath (no un módulo de Verilog) y cómo se relaciona con top_riscv y riscv_pipeline.', onclick: () => callbacks.onTop && callbacks.onTop() }, '¿Qué es esta vista?'), legend);
   const tabL = h('button', { class: 'edge-tab edge-l', title: 'Mostrar u ocultar el panel izquierdo', 'aria-label': 'Panel izquierdo', onclick: () => setPanel('l', !isPanelOpen('l'), { persist: true }) }, h('span', { class: 'et-ch' }, '‹'), h('span', { class: 'et-t' }, 'Editor'));
   const tabR = h('button', { class: 'edge-tab edge-r', title: 'Mostrar u ocultar el panel derecho', 'aria-label': 'Panel derecho', onclick: () => setPanel('r', !isPanelOpen('r'), { persist: true }) }, h('span', { class: 'et-ch' }, '›'), h('span', { class: 'et-t' }, 'Inspector'));
-  const TAB_LABEL = { sim: ['Editor', 'Inspector'], lessons: ['Lección', 'Inspector'], examples: ['Ejemplos', 'Inspector'], debug: ['Consola', 'Inspector'], home: ['', ''] };
+  const TAB_LABEL = { sim: ['Editor', 'Inspector'], lessons: ['Lección', 'Inspector'], examples: ['Ejemplos', 'Inspector'], debug: ['Consola', 'Inspector'], home: ['', ''], verificacion: ['', ''] };
   const stage = h('main', { class: 'stage' }, sceneEl, popups, tools, hint, crumbs, tabL, tabR, sheet);
 
   const app = h('div', { id: 'app-shell', class: 'app' }, topbar, stage, loading);
@@ -124,7 +126,7 @@ export function createShell(root, callbacks = {}) {
     view = v; auto.l = null; auto.r = null;
     root.dataset.view = v; app.dataset.view = v;
     for (const [id, b] of Object.entries(navBtns)) b.classList.toggle('active', id === v);
-    if (v === 'home') app.classList.remove('sheet-open'); else if (!silent) app.classList.add('sheet-open');
+    if (v === 'home') app.classList.remove('sheet-open'); else if (!silent || v === 'verificacion') app.classList.add('sheet-open');
     applyPanels(false);
     if (!silent && callbacks.onView) callbacks.onView(v);
   }

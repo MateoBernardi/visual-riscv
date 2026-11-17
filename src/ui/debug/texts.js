@@ -31,7 +31,7 @@ export const NODES = {
     where: 'uart_core · TX_FIFO' },
   tx: { short: 'TX', title: 'uart_tx', block: 'uart', file: 'uart/uart_tx.v', sym: 'module:uart_tx', view: 'uart_tx_fsm',
     where: 'uart_core · TX' },
-  dbgread: { short: 'DBG', title: 'dbg_data (86 palabras)', block: 'debug', file: 'debug/debug_unit.v', sym: 'module:debug_unit', view: 'debug_unit',
+  dbgread: { short: 'DBG', title: 'dbg_data (90 palabras)', block: 'debug', file: 'debug/debug_unit.v', sym: 'module:debug_unit', view: 'debug_unit',
     where: 'riscv_pipeline → debug_unit (i_dbg_data)' },
 };
 export const nodeLink = (key, text) => { const n = NODES[key]; return n && n.file ? link(n.file, n.sym, text || n.title) : (text || (n && n.title) || key); };
@@ -100,7 +100,7 @@ export function uartText(byte) {
   for (let i = 0; i < 8; i++) bits.push((byte >> i) & 1);
   return `Cada byte viaja como una trama <b>8N1</b>: bit de start (0), los 8 bits <b>LSB primero</b> (<code>${bits.join('')}</code> para 0x${hx2(byte)}) y bit de stop (1). A 19200 baudios cada bit dura ≈52 µs. El receptor corre a ×16: toma 16 muestras por bit y lee el valor en el centro (muestra 8).`;
 }
-export const SYNC_TEXT = 'La línea <code>rx</code> llega del pin de la FPGA sin relación con el reloj de 50 MHz. Antes de usarla pasa por <b>dos flip-flops en serie</b> (<code>sync_2ff</code>): si el primero queda metaestable, el segundo ya la ve estable.';
+export const SYNC_TEXT = 'La línea <code>rx</code> llega del pin de la FPGA sin relación con el reloj de 70 MHz. Antes de usarla pasa por <b>dos flip-flops en serie</b> (<code>sync_2ff</code>): si el primero queda metaestable, el segundo ya la ve estable.';
 export const RXFSM_TEXT = 'La FSM de <code>uart_rx</code> detecta el flanco de bajada (start), cuenta ticks hasta el centro de cada bit y va desplazando los 8 bits dentro del registro. Al final del stop levanta <code>rx_done</code>.';
 export const RXFIFO_TEXT = 'El byte recibido se escribe en la <b>RX FIFO</b> (4 entradas de 8 bits). Al dejar de estar vacía, <code>rx_empty</code> baja a 0 y la debug unit sabe que hay algo para leer. En la práctica la FSM lo consume en 1-2 ciclos de reloj, mucho antes de que llegue el byte siguiente (520 µs ≈ 26 000 ciclos).';
 

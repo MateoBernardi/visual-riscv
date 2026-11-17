@@ -133,7 +133,7 @@ export function createPlayer({ scene, panel, getMode, colors }) {
       const lane = item.tx.lane;
       if (lane === 0) word.bytes = [null, null, null, null];
       word.bytes[lane] = item.tx.byte;
-      return { title: `Volcado: ${dumpWordName(item.tx.word)}`, addr: null, bytes: [...word.bytes], cur: lane, disasm: false, name: `palabra ${item.tx.word} de 86`, note: 'dbg_word se desplaza 8 bits por byte enviado (LSB primero).' };
+      return { title: `Volcado: ${dumpWordName(item.tx.word)}`, addr: null, bytes: [...word.bytes], cur: lane, disasm: false, name: `palabra ${item.tx.word} de 90`, note: 'dbg_word se desplaza 8 bits por byte enviado (LSB primero).' };
     }
     function effectOf(item, hot) {
       const t = findTransition(item.from, item.to, item.rx ? item.rx.byte : null);
@@ -302,7 +302,7 @@ export function createPlayer({ scene, panel, getMode, colors }) {
         panel.set({ progress: progressOf(bytesDone, true), milestones: msStatus(segs, idx, trace, false), dir: isTx ? 'tx' : 'rx',
           chips: isTx ? { roles: txRoles, cur: item.tx.n, title: 'Respuesta de la FPGA', mask: true } : item.rx ? { roles: rxRoles, cur: item.rx.idx, title: 'Trama que manda la PC' } : undefined,
           fsm: { state: item.to, from: item.from, descState: item.tx || item.to === 'IDLE' ? item.from : item.to, trans: findTransition(item.from, item.to, item.rx ? item.rx.byte : null) }, byte: si ? { value: si.byte } : undefined,
-          word: item.imem ? { title: `Escribiendo la palabra ${item.imem.addr >> 2} de la IMEM`, addr: word.addr, bytes: [...word.bytes], cur: item.imem.addr & 3 } : item.tx && item.tx.role === 'word' ? { title: `Volcado: ${dumpWordName(item.tx.word)}`, addr: null, bytes: [...word.bytes], cur: item.tx.lane, disasm: false, name: `palabra ${item.tx.word} de 86` } : undefined,
+          word: item.imem ? { title: `Escribiendo la palabra ${item.imem.addr >> 2} de la IMEM`, addr: word.addr, bytes: [...word.bytes], cur: item.imem.addr & 3 } : item.tx && item.tx.role === 'word' ? { title: `Volcado: ${dumpWordName(item.tx.word)}`, addr: null, bytes: [...word.bytes], cur: item.tx.lane, disasm: false, name: `palabra ${item.tx.word} de 90` } : undefined,
           fifo: { rx: { n: 0, bytes: [] }, tx: { n: Math.min(4, bufs.tx.length), bytes: bufs.tx.slice(-4) } },
           nodeVals: { fsm: item.to }, wave: null, rxfsm: null, active: 'fsm', transit: null, passed: [] });
         setStatus('debug', { text: item.to, tone: 'info' }); flagsToScene(fl);
@@ -407,14 +407,14 @@ function effectHow(item, trace) {
 function txHow(item, trace) {
   const t = item.tx;
   if (t.role === 'reply') return `La FSM está en <b>${item.from}</b> y encola la respuesta <b>${asc(t.byte)}</b> (<code>0x${hx2(t.byte)}</code>): ${t.label}.`;
-  if (t.role === 'cnt_lo') return 'DUMP_CNT_LO: primero la <b>cuenta</b> de palabras que van a venir (86 = 0x0056), byte bajo.';
-  if (t.role === 'cnt_hi') return 'DUMP_CNT_HI: byte alto de la cuenta (0x00). Con eso la PC sabe cuántos bytes esperar: 2 + 4·86 = 346.';
+  if (t.role === 'cnt_lo') return 'DUMP_CNT_LO: primero la <b>cuenta</b> de palabras que van a venir (90 = 0x005A), byte bajo.';
+  if (t.role === 'cnt_hi') return 'DUMP_CNT_HI: byte alto de la cuenta (0x00). Con eso la PC sabe cuántos bytes esperar: 2 + 4·90 = 362.';
   return `DUMP_BYTE: byte ${t.lane} de la palabra ${t.word} (<b>${dumpWordName(t.word)}</b>). Se manda LSB primero y <code>dbg_word</code> se desplaza 8 bits.`;
 }
 function txHostHow(item) {
   const t = item.tx;
   if (t.role === 'reply') return `La PC recibe <b>${asc(t.byte)}</b>: ${t.label}.`;
-  return 'La PC va guardando los bytes; al final decodifica las 86 palabras (ver pestaña Volcado).';
+  return 'La PC va guardando los bytes; al final decodifica las 90 palabras (ver pestaña Volcado).';
 }
 function fsmOnlyHow(item, trace) {
   if (item.cpuStep) return 'El CPU hace un ciclo de reloj gracias a <code>o_cpu_enable</code>.';

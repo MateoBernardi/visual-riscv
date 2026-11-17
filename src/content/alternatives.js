@@ -46,7 +46,7 @@ const regfileAlt = {
 
 const fwdAlt = {
   title: 'Forwarding y muxes de operandos',
-  current: '<p>Dos muxes de 3 entradas (<code>fwd_a_val</code>, <code>fwd_b_val</code>) controlados por forward_unit: <code>00</code> regfile, <code>10</code> EX/MEM (<code>mem_result</code>, con prioridad), <code>01</code> MEM/WB (<code>wb_result</code>). Después, <code>alu_a</code> elige el PC para AUIPC y <code>alu_b</code> elige el inmediato con <code>alu_src</code>. Las comparaciones usan <code>inst[19:15]</code> e <code>inst[24:20]</code> sin mirar el formato.</p>',
+  current: '<p>Dos muxes de 3 entradas (<code>fwd_a_val</code>, <code>fwd_b_val</code>) controlados por forward_unit: <code>00</code> regfile, <code>10</code> EX/MEM (<code>mem_fwd</code>, con prioridad; nunca el dato de un load), <code>01</code> MEM/WB (<code>wb_result</code>). Después, <code>alu_a</code> elige el PC para AUIPC y <code>alu_b</code> elige el inmediato con <code>alu_src</code>. Las comparaciones usan <code>inst[19:15]</code> e <code>inst[24:20]</code> sin mirar el formato.</p>',
   options: [
     A('Sin forwarding (solo stalls)', 'Si hay dependencia RAW, se detiene el pipeline hasta que el productor escriba el regfile. Es el modo alternativo de la GUI.',
       ['Hardware mínimo, camino crítico corto', 'Fácil de verificar'], ['Hasta 2 burbujas por dependencia', 'CPI mucho mayor en código real'], 'bajo', 'CPI ~1,3-1,6 típico', 'Cores mínimos, MIPS I teórico'),
@@ -148,7 +148,7 @@ const wbAlt = {
 
 const debugAlt = {
   title: 'Depuración del core',
-  current: '<p>debug_unit es una FSM que habla UART con el host (comandos L/S/R/P/X/D). Puede cargar el programa en imem, avanzar un ciclo, correr, pausar, resetear y volcar 86 palabras de estado interno. Controla <code>i_enable</code> (clock lógico) e <code>i_rst</code> del core.</p>',
+  current: '<p>debug_unit es una FSM que habla UART con el host (comandos L/S/R/P/X/D). Puede cargar el programa en imem, avanzar un ciclo, correr, pausar, resetear y volcar 90 palabras de estado interno. Controla <code>i_enable</code> (clock lógico) e <code>i_rst</code> del core.</p>',
   options: [
     A('RISC-V External Debug + JTAG', 'Debug Module estándar con registros abstractos, halt/resume y breakpoints por hardware, accesible por JTAG (OpenOCD + GDB).', ['Estándar, usable con GDB', 'Soporta breakpoints y acceso a CSR'], ['Mucho más hardware', 'Requiere un debug module'], 'medio-alto', '—', 'SiFive, Rocket, Ibex, VexRiscv'),
     A('ILA de Vivado (analizador lógico interno)', 'Se insertan sondas en la FPGA para capturar señales internas con trigger.', ['Ve todas las señales en tiempo real', 'Sin escribir hardware'], ['Consume BRAM', 'Solo con herramienta propietaria'], 'medio (BRAM)', '—', 'Cualquier diseño en FPGA Xilinx'),

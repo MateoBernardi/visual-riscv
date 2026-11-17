@@ -203,7 +203,7 @@ function ctrlSummary(c) {
 }
 
 /** Elige el evento "más interesante" de un snapshot para explicarlo (stall > flush > forwarding > resto). */
-export const NOTABLE = ['loadUseStall', 'rawStallNoFwd', 'falseStall', 'flush', 'branchTaken', 'jump', 'fwdExMem', 'fwdMemWb', 'bypassWB', 'haltDetected', 'memWrite', 'memRead', 'branchNotTaken', 'halted'];
+export const NOTABLE = ['trap', 'loadUseStall', 'rawStallNoFwd', 'falseStall', 'flush', 'branchTaken', 'jump', 'fwdExMem', 'fwdMemWb', 'bypassWB', 'haltDetected', 'memWrite', 'memRead', 'branchNotTaken', 'halted'];
 const ROUTINE = ['aluOp', 'writeback', 'regRead', 'immGen', 'decode', 'fetch', 'bubble'];
 /** Elige el evento "más interesante": los notables (stall > flush > salto > forwarding > memoria > halt); con `routine` cae en los rutinarios. */
 export function pickEvent(events = [], { routine = true } = {}) {

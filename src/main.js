@@ -24,6 +24,7 @@ import { createHome } from './ui/home.js';
 import { createInspector } from './ui/inspector.js';
 import { createLessons } from './ui/lessons.js';
 import { createExamples } from './ui/examples.js';
+import { createVerification } from './ui/verification.js';
 import { createPopups } from './ui/popups.js';
 import { mountDebugView } from './ui/debug/index.js';
 import { loadProgramViaUart, skipUartLoad } from './ui/debug/uartLoader.js';
@@ -149,9 +150,10 @@ const inspector = createInspector(shell.slots.right.inspector, {
   },
 });
 const lessons = createLessons(shell.slots.left.lessons, {
-  onSelect: (l) => { if (l && l.focus && !curSchema) scene.focusBlock(l.focus); },
+  onSelect: (l) => { if (l && l.focus && !curSchema) scene.focusBlock(l.focus); scheduleSync(); },
   onLoadExample: (exId, lesson) => {
     loadExample(exId, { focus: false });
+    setReturn(lesson);
     shell.setView('sim');
     shell.setPanel('l', true);
     if (lesson && lesson.focus) setTimeout(() => scene.focusBlock(lesson.focus), 60);
@@ -159,6 +161,7 @@ const lessons = createLessons(shell.slots.left.lessons, {
   onWatch: (b) => watchBlock(b),
   onLoadProgram: (p, cat) => {
     loadProgram(p.code, { example: { id: 'test:' + cat.id + ':' + p.title, title: p.title, code: p.code, expect: p.expect, steps: [], explainVerification: (p.note || '') + (p.knownIssue ? p.knownIssue.html : '') } });
+    setReturn({ id: null, title: 'Construí tu propio RISC-V', track: 'construir' });
     shell.setView('sim');
     shell.setPanel('l', true);
     dock.setTab('verify', { open: true });
@@ -169,11 +172,13 @@ const examplesView = createExamples(shell.slots.left.examples, {
 });
 createHome(shell.slots.left.home, {
   onPath: (id) => {
-    if (id === 'entender' || id === 'construir') { shell.setView('lessons'); lessons.update({ lessons: LESSONS, activeId: null, scrollTo: id }); }
+    if (id === 'entender' || id === 'construir') navigate('#/lecciones/' + id);
     else if (id === 'simular') { shell.setView('sim'); shell.setPanel('l', true); }
     else if (id === 'debug') shell.setView('debug');
+    else if (id === 'verificacion') shell.setView('verificacion');
   },
 });
+createVerification(shell.slots.left.verificacion, { onLesson: (id) => navigate('#/lecciones/' + id) });
 
 // Aviso (descartable, se recuerda) la primera vez que se entra a un módulo: explica la jerarquía real vs. la vista general
 const hierStore = safeStorage();
@@ -390,7 +395,7 @@ function render(snap, prev, { animate }) {
     cpiRec.set(key, r);
   }
   const rec = cpiRec.get(key);
-  controls.update({ cycle: snap.cycle, halted: snap.halted, canBack: pipe.history.length > 1, running, cpi: { cycles: snap.cycle, retired, compare: rec ? { fwd: rec.fwd, nofwd: rec.nofwd } : null } });
+  controls.update({ cycle: snap.cycle, halted: snap.halted, trap: snap.halted ? snap.trap : null, canBack: pipe.history.length > 1, running, cpi: { cycles: snap.cycle, retired, compare: rec ? { fwd: rec.fwd, nofwd: rec.nofwd } : null } });
   dock.setCycle(snap.cycle);
   timeline.update({ history: pipe.history, selectedId: selectedInstr });
   const lastWrite = prev && prev.signals && prev.signals.memWrite ? { addr: prev.signals.memAddr } : null;
@@ -503,6 +508,7 @@ function selectBlock(id, { quiet = false } = {}) {
 async function goView(schema, opts = {}) {
   if (!schema || inDebug) return;
   insideMine = true; curSchema = schema; focus = null;
+  scheduleSync();
   popups.closeUnpinned(); popups.closeType('resolver'); ledTip.hide();
   setCrumbs(schema);
   refreshInspector();
@@ -513,6 +519,7 @@ async function goView(schema, opts = {}) {
 async function exitToBoard() {
   if (!curSchema) return;
   curSchema = null; insideMine = false; focus = null;
+  scheduleSync();
   setCrumbs(null);
   refreshInspector();
   await scene.exitView();
@@ -578,6 +585,8 @@ function leaveDebugMode() {
 // ---------- vistas ----------
 function onView(v) {
   updateInsets(true);
+  if (v !== 'sim') setReturn(null);
+  scheduleSync();
   scene.setIntro(v === 'home' && !qs0.has('shot') && !matchMedia('(prefers-reduced-motion: reduce)').matches);
   if (v === 'debug' && insideMine) { curSchema = null; insideMine = false; setCrumbs(null); scene.exitView({ animate: false }); }
   if (v === 'debug' && !inDebug) enterDebugMode();
@@ -607,6 +616,71 @@ function updateInsets(reset = false) {
 if (window.ResizeObserver) {
   const ro = new ResizeObserver(() => updateInsets(false));
   [shell.slots.stage, shell.slots.dockEl, shell.slots.leftPanel, shell.slots.rightPanel].forEach((e) => ro.observe(e));
+}
+
+// ---------- rutas: cada lugar tiene su URL (#/...), así Atrás/Adelante del navegador funcionan ----------
+// #/  #/lecciones  #/lecciones/<lección|entender|construir>  #/ejemplos  #/simulador  #/simulador/<vista interna>  #/debug  #/verificacion
+const ROUTE_VIEW = { '': 'home', lecciones: 'lessons', ejemplos: 'examples', simulador: 'sim', debug: 'debug', verificacion: 'verificacion' };
+const VIEW_ROUTE = Object.fromEntries(Object.entries(ROUTE_VIEW).map(([k, v]) => [v, k]));
+let applyingRoute = false, syncQueued = false;
+function routeHash() {
+  const v = shell.getView();
+  let hsh = '#/' + (VIEW_ROUTE[v] ?? '');
+  if (v === 'lessons' && lessons.activeId()) hsh += '/' + lessons.activeId();
+  if (v === 'sim' && curSchema) hsh += '/' + curSchema.id;
+  return hsh;
+}
+function scheduleSync() {
+  if (syncQueued) return;
+  syncQueued = true;
+  queueMicrotask(() => {
+    syncQueued = false;
+    const want = routeHash();
+    if (sameRoute(want, location.hash)) return;
+    if (applyingRoute) history.replaceState(null, '', want);
+    else history.pushState(null, '', want);
+  });
+}
+// '#/lecciones/entender' es la lista de lecciones (con scroll al recorrido): la misma ruta que '#/lecciones'
+const normRoute = (x) => (x || '#/').replace(/^#\/lecciones\/(entender|construir)$/, '#/lecciones');
+const sameRoute = (a, b) => normRoute(a) === normRoute(b);
+function navigate(hsh) { if (hsh === (location.hash || '#/')) applyRoute(); else location.hash = hsh; }
+async function applyRoute() {
+  const [, head = '', arg = ''] = (location.hash || '#/').match(/^#\/?([^/]*)\/?(.*)$/) || [];
+  const view = ROUTE_VIEW[decodeURIComponent(head)];
+  if (!view) { history.replaceState(null, '', '#/'); return applyRoute(); }
+  applyingRoute = true;
+  try {
+    if (shell.getView() !== view) shell.setView(view);
+    if (view === 'lessons') {
+      const track = arg === 'entender' || arg === 'construir' ? arg : null;
+      const lesson = !track && LESSONS.some((l) => l.id === arg) ? arg : null;
+      if (lesson && lessons.activeId() !== lesson) lessons.open(lesson);
+      else if (!lesson && lessons.activeId()) lessons.back();
+      if (track) lessons.update({ scrollTo: track });
+    }
+    if (view === 'sim') {
+      const target = arg && VIEWS[arg] ? VIEWS[arg] : null;
+      if (target && curSchema !== target) await goView(target, { fromBlockId: (target.blockIds && target.blockIds[0]) || undefined });
+      else if (!target && curSchema) await exitToBoard();
+    }
+  } finally { applyingRoute = false; }
+}
+// popstate llega con Atrás/Adelante y también al seguir un link #/... o cambiar location.hash
+window.addEventListener('popstate', () => applyRoute());
+
+// "Volver a la lección": aparece en el simulador cuando se llegó desde una lección o un programa de prueba
+let returnTo = null;
+const backPill = h('button', { class: 'pill-btn back-pill', type: 'button', hidden: true, onclick: () => {
+  const r = returnTo; if (!r) return;
+  navigate('#/lecciones/' + (r.id || r.track));
+} });
+shell.slots.stage.append(backPill);
+function setReturn(lesson) {
+  returnTo = lesson || null;
+  backPill.hidden = !returnTo;
+  shell.slots.stage.parentElement.classList.toggle('has-return', !!returnTo);
+  if (returnTo) backPill.textContent = '‹ Volver a: ' + returnTo.title;
 }
 
 // ---------- arranque ----------
@@ -652,6 +726,9 @@ if (qs.has('isa')) { const w = program.listing[Number(qs.get('isa')) || 0]; if (
 if (qs.get('lesson')) { shell.setView('lessons'); lessons.update({ lessons: LESSONS, activeId: qs.get('lesson') }); }
 if (qs.get('track')) { shell.setView('lessons'); lessons.update({ lessons: LESSONS, activeId: null, scrollTo: qs.get('track') }); }
 if (qs.get('alt')) showAlternatives(qs.get('alt'));
+
+// la URL manda si trae una ruta; si no, se escribe la de la vista actual
+if (location.hash && location.hash !== '#/') applyRoute(); else history.replaceState(null, '', routeHash());
 
 if (qs.has('nosplash')) document.querySelector('.loading')?.remove();
 const fontsReady = (document.fonts && document.fonts.ready) ? Promise.race([document.fonts.ready, sleep(2500)]) : Promise.resolve();

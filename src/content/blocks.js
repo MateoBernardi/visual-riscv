@@ -90,7 +90,7 @@ export const BLOCK_INFO = {
   },
   fwdMuxA: {
     title: 'Mux de forwarding A', stage: 'EX',
-    summary: '<p>Elige el operando A de la ALU: <code>00</code> viene del regfile (<code>ex_rdata1</code>), <code>10</code> de <code>mem_result</code> (EX/MEM) y <code>01</code> de <code>wb_result</code> (MEM/WB). Luego <code>alu_a</code> sustituye por el PC si la instrucción es AUIPC.</p>',
+    summary: '<p>Elige el operando A de la ALU: <code>00</code> viene del regfile (<code>ex_rdata1</code>), <code>10</code> de <code>mem_fwd</code> (EX/MEM, sin el dato de la dmem) y <code>01</code> de <code>wb_result</code> (MEM/WB). Luego <code>alu_a</code> sustituye por el PC si la instrucción es AUIPC.</p>',
     rtlFile: 'pipeline/riscv_pipeline.v',
     signals: [
       S('forward_a', 'Selección: 0 regfile, 2 EX/MEM, 1 MEM/WB.', 'signals.fwdA'),
@@ -175,7 +175,7 @@ export const BLOCK_INFO = {
   },
   wbMux: {
     title: 'Mux wb_sel (resultado)', stage: 'MEM',
-    summary: '<p>Elige el valor que produce la instrucción en MEM: <code>00</code> <code>alu_out</code>, <code>01</code> <code>mem_rdata</code>, <code>10</code> <code>pc4</code>, <code>11</code> <code>imm</code> (LUI). El resultado, <code>mem_result</code>, se forwardea a EX y se guarda en MEM/WB.</p>',
+    summary: '<p>Elige el valor que produce la instrucción en MEM: <code>00</code> <code>alu_out</code>, <code>01</code> <code>mem_rdata</code>, <code>10</code> <code>pc4</code>, <code>11</code> <code>imm</code> (LUI). El resultado, <code>mem_result</code>, se guarda en MEM/WB; hacia EX se adelanta lo mismo salvo el dato de un load, que llega desde WB.</p>',
     rtlFile: 'pipeline/riscv_pipeline.v',
     signals: [
       S('wb_sel', 'Selección.', 'signals.wbSel'),
@@ -236,7 +236,7 @@ export const BLOCK_INFO = {
   },
   debug: {
     title: 'Debug unit', stage: 'Fuera del core',
-    summary: '<p>FSM que interpreta comandos UART (<code>L S R P X D</code>), carga la imem, controla <code>i_enable</code> / <code>i_rst</code> del core y vuelca 86 palabras del bus de debug (PC, latches, registros x0..x31 y 32 palabras de dmem).</p>',
+    summary: '<p>FSM que interpreta comandos UART (<code>L S R P X D</code>), carga la imem, controla <code>i_enable</code> / <code>i_rst</code> del core y vuelca 90 palabras del bus de debug (PC, latches, registros, 32 palabras de dmem, la causa del trap y la versión del hardware).</p>',
     rtlFile: 'debug/debug_unit.v',
     signals: [
       S('halted', 'El core llegó a un halt.', 'halted'),
@@ -248,7 +248,7 @@ export const BLOCK_INFO = {
   },
   clkrst: {
     title: 'Reloj y reset', stage: 'Fuera del core',
-    summary: '<p>Lo que le da reloj y reset a todo el sistema: el <code>MMCM</code> que convierte los 100 MHz de la placa en 50 MHz (el reloj de toda la lógica), <code>reset_gen</code> (reset de power-on de 4 ciclos más el botón BTNC) y el sincronizador de la línea RX. El reset del sistema (<code>sys_reset</code>) llega a la UART y a la debug unit; el CPU recibe un reset aparte, <code>cpu_reset</code>, que arma la debug unit.</p>',
+    summary: '<p>Lo que le da reloj y reset a todo el sistema: el <code>MMCM</code> que convierte los 100 MHz de la placa en 70 MHz (el reloj de toda la lógica), <code>reset_gen</code> (reset de power-on de 4 ciclos más el botón BTNC) y el sincronizador de la línea RX. El reset del sistema (<code>sys_reset</code>) llega a la UART y a la debug unit; el CPU recibe un reset aparte, <code>cpu_reset</code>, que arma la debug unit.</p>',
     rtlFile: 'common/reset_gen.v',
     signals: [
       S('halted', 'El reset de CPU (RST) lo maneja la debug unit; este bloque solo genera sys_reset.', 'halted'),

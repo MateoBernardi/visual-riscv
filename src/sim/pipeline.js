@@ -6,13 +6,15 @@
 // con reg_write en EX o MEM (WB queda cubierto por el bypass WB->ID del regfile).
 import {
   NOP, ALU_NAMES, WB_SEL, WB_SEL_NAMES, IMM, OPCODE, fields, immGen, decodeControl, usesSources,
-  aluCompute, branchTaken, hex32,
+  aluCompute, branchTaken, hex32, illegalCheck, TRAP_CAUSE,
 } from './isa.js';
 import { disasm } from './disasm.js';
 
 export const IMEM_WORDS = 256;
 export const DMEM_WORDS = 256;
-export const DBG_COUNT = 86;
+export const DBG_COUNT = 90; // 0..88 del CPU + 89 BUILD_ID (lo agrega top_riscv)
+const DBG_TRAP = 86;
+const IMEM_BYTES = IMEM_WORDS * 4, DMEM_BYTES = DMEM_WORDS * 4;
 const DBG_REGS = 22;
 const DBG_DMEM = 54;
 const HISTORY_MAX = 5000; // se descartan los snapshots más viejos (history[0] deja de ser el reset)
@@ -61,7 +63,7 @@ function dmemWrite(dmem, addr, wdata, funct3) {
 const bubbleIdEx = (cause) => ({
   reg_write: 0, alu_src: 0, mem_read: 0, mem_write: 0, branch: 0, jump: 0, is_jalr: 0, is_auipc: 0,
   halt: 0, wb_sel: 0, alu_op: 0, pc: 0, pc4: 0, rdata1: 0, rdata2: 0, imm: 0, rs1: 0, rs2: 0, rd: 0,
-  funct3: 0, inst: NOP, tag: null, cause,
+  funct3: 0, trapCause: 0, inst: NOP, tag: null, cause,
 });
 const bubbleExMem = () => ({
   reg_write: 0, mem_read: 0, mem_write: 0, halt: 0, wb_sel: 0, alu_out: 0, rdata2: 0, pc4: 0, imm: 0,
@@ -72,7 +74,7 @@ const bubbleMemWb = () => ({ reg_write: 0, halt: 0, result: 0, rd: 0, pc: 0, ins
 function cloneState(s) {
   return {
     ...s,
-    ifid: { ...s.ifid }, idex: { ...s.idex }, exmem: { ...s.exmem }, memwb: { ...s.memwb },
+    ifid: { ...s.ifid }, idex: { ...s.idex }, exmem: { ...s.exmem }, memwb: { ...s.memwb }, trap: { ...s.trap },
     regs: Uint32Array.from(s.regs), dmem: Uint32Array.from(s.dmem),
   };
 }
@@ -105,7 +107,7 @@ export class Pipeline {
   reset() {
     if (this.s) this._dmem = this.s.dmem; // la dmem sobrevive al reset
     this.s = {
-      cycle: 0, pc: 0, ifTag: 0, nextId: 1, halting: false,
+      cycle: 0, pc: 0, ifTag: 0, nextId: 1, halting: false, trap: { cause: 0, pc: 0, tval: 0 },
       ifid: { pc: 0, inst: NOP, tag: null, cause: 'reset' },
       idex: bubbleIdEx('reset'), exmem: bubbleExMem(), memwb: bubbleMemWb(),
       regs: new Uint32Array(32), dmem: this._dmem,
@@ -142,6 +144,12 @@ export class Pipeline {
     g.idRs1 = f.rs1; g.idRs2 = f.rs2;
     g.ctrl = ctrl;
     g.idImm = immGen(inst, ctrl.imm_sel);
+    // illegal_check.v + fetch fault: la instrucción se marca en ID y recién actúa en EX
+    const ill = illegalCheck(inst);
+    g.idFetchFault = s.ifid.tag !== null && s.ifid.pc >= IMEM_BYTES;
+    g.idIllegal = ill.illegal;
+    g.idStop = !!(g.idFetchFault || ill.illegal || ctrl.halt);
+    g.idCause = g.idFetchFault ? 1 : ill.illegal ? 2 : ill.ebreak ? 3 : 11;
     const mw = s.memwb;
     const wr = mw.reg_write && mw.rd !== 0;
     g.bypassA = !!(f.rs1 !== 0 && wr && mw.rd === f.rs1);
@@ -171,8 +179,10 @@ export class Pipeline {
       case WB_SEL.PC4: memResult = m.pc4; break;
       default: memResult = m.imm;
     }
-    g.fwdAVal = fa === FWD_MEM ? memResult : fa === FWD_WB ? mw.result : e.rdata1;
-    g.fwdBVal = fb === FWD_MEM ? memResult : fb === FWD_WB ? mw.result : e.rdata2;
+    // mem_fwd: lo mismo que mem_result salvo que nunca es el dato de la dmem (el load se adelanta desde WB)
+    const memFwd = m.wb_sel === WB_SEL.PC4 ? m.pc4 : m.wb_sel === WB_SEL.IMM ? m.imm : m.alu_out;
+    g.fwdAVal = fa === FWD_MEM ? memFwd : fa === FWD_WB ? mw.result : e.rdata1;
+    g.fwdBVal = fb === FWD_MEM ? memFwd : fb === FWD_WB ? mw.result : e.rdata2;
     g.aluA = e.is_auipc ? e.pc : g.fwdAVal;
     g.aluB = e.alu_src ? e.imm : g.fwdBVal;
     const alu = aluCompute(g.aluA, g.aluB, e.alu_op);
@@ -182,6 +192,17 @@ export class Pipeline {
     g.branchTaken = !!(e.branch && g.branchCond);
     g.redirect = !!(g.branchTaken || e.jump);
     g.redirectTarget = e.is_jalr ? (alu.out & ~1) >>> 0 : g.branchTarget;
+    // trap_unit.v
+    const pcMis = g.redirect && (g.redirectTarget & 3) !== 0;
+    const memAcc = !!(e.mem_read || e.mem_write);
+    const sz = e.funct3 & 3;
+    const memMis = memAcc && ((sz === 2 && (alu.out & 3) !== 0) || (sz === 1 && (alu.out & 1) !== 0));
+    const memFault = memAcc && (alu.out >>> 0) >= DMEM_BYTES;
+    g.exExcMem = memMis || memFault;
+    g.exExc = pcMis || g.exExcMem;
+    g.exExcCause = pcMis ? 0 : memMis ? (e.mem_write ? 6 : 4) : (e.mem_write ? 7 : 5);
+    g.exExcTval = pcMis ? g.redirectTarget : alu.out >>> 0;
+    g.exStop = !!(e.halt || g.exExc);
     // ---- hazard unit (ID)
     let ha, hb;
     if (fwdOn) { // hazard_unit.v: load-use
@@ -197,7 +218,7 @@ export class Pipeline {
     const uses = usesSources(inst);
     g.falseStall = g.stall && !((ha && uses.rs1) || (hb && uses.rs2));
     g.hazardA = ha; g.hazardB = hb;
-    g.stopFetch = !!(e.halt || s.halting);
+    g.stopFetch = !!(g.exStop || s.halting);
     g.flushIfId = g.redirect || g.stopFetch;
     g.flushIdEx = g.redirect || g.stopFetch || g.stall;
     g.pcEn = !g.stall && !g.stopFetch;
@@ -230,7 +251,8 @@ export class Pipeline {
       reg_write: m.reg_write, halt: m.halt, result: g.memResult, rd: m.rd, pc: m.pc, inst: m.inst, tag: m.tag,
     };
     n.exmem = {
-      reg_write: e.reg_write, mem_read: e.mem_read, mem_write: e.mem_write, halt: e.halt, wb_sel: e.wb_sel,
+      reg_write: g.exExc ? 0 : e.reg_write, mem_read: g.exExc ? 0 : e.mem_read, mem_write: g.exExc ? 0 : e.mem_write,
+      halt: g.exStop ? 1 : 0, wb_sel: e.wb_sel,
       alu_out: g.aluOut, rdata2: g.fwdBVal, pc4: e.pc4, imm: e.imm, rd: e.rd, funct3: e.funct3,
       pc: e.pc, inst: e.inst, tag: e.tag,
     };
@@ -238,10 +260,11 @@ export class Pipeline {
     if (g.flushIdEx) {
       n.idex = bubbleIdEx(g.redirect ? 'redirect' : g.stopFetch ? 'halt' : 'stall');
     } else {
-      const c = g.ctrl, i = s.ifid, f = fields(i.inst);
+      const c = g.ctrl, i = s.ifid, f = fields(i.inst), q = g.idStop ? 0 : 1;
       n.idex = {
-        reg_write: c.reg_write, alu_src: c.alu_src, mem_read: c.mem_read, mem_write: c.mem_write,
-        branch: c.branch, jump: c.jump, is_jalr: c.is_jalr, is_auipc: c.is_auipc, halt: c.halt,
+        reg_write: c.reg_write & q, alu_src: c.alu_src, mem_read: c.mem_read & q, mem_write: c.mem_write & q,
+        branch: c.branch & q, jump: c.jump & q, is_jalr: c.is_jalr, is_auipc: c.is_auipc, halt: g.idStop ? 1 : 0,
+        trapCause: g.idCause,
         wb_sel: c.wb_sel, alu_op: c.alu_op, pc: i.pc, pc4: (i.pc + 4) >>> 0, rdata1: g.idRdata1,
         rdata2: g.idRdata2, imm: g.idImm, rs1: f.rs1, rs2: f.rs2, rd: f.rd, funct3: f.funct3,
         inst: i.inst, tag: i.tag, cause: null,
@@ -252,7 +275,12 @@ export class Pipeline {
     else if (!g.stall) n.ifid = { pc: s.pc, inst: g.ifInst, tag: s.ifTag, cause: null };
     // PC (cada vez que avanza, la instrucción del nuevo fetch recibe un id nuevo)
     if (g.pcEn) { n.pc = g.pcNext; n.ifTag = n.nextId++; }
-    if (e.halt) n.halting = true;
+    if (g.exStop && !s.halting) {
+      n.trap = e.halt
+        ? { cause: e.trapCause, pc: e.pc, tval: e.trapCause === 1 ? e.pc : 0 }
+        : { cause: g.exExcCause, pc: e.pc, tval: g.exExcTval };
+    }
+    if (g.exStop) n.halting = true;
     this.s = n;
     this._cache = null;
     this._pristine = false;
@@ -310,10 +338,12 @@ export class Pipeline {
       memRData: g.memRData, memBe: g.memBe, memResult: g.memResult, wbSel: g.wbSel,
       regWrite: g.regWrite, wbRd: g.wbRd, wbData: g.wbData,
       // extras (no están en el contrato)
+      exc: !!g.exExc, idStop: g.idStop,
       stopFetch: g.stopFetch, overflow: !!g.ovf, branchTarget: g.branchTarget, ifInst: g.ifInst,
     };
     const snap = {
       cycle: s.cycle, pc: s.pc, halted: this.halted, halting: s.halting, stages, latches, signals,
+      trap: this.halted || s.halting ? { ...s.trap, name: TRAP_CAUSE[s.trap.cause] || '?', fatal: s.trap.cause !== 3 && s.trap.cause !== 11 } : null,
       events: [], regs: Uint32Array.from(s.regs), dmem: Uint32Array.from(s.dmem),
       forwarding: this.opts.forwarding,
     };
@@ -358,7 +388,11 @@ export class Pipeline {
       case 21: return mw.rd >>> 0;
       default:
         if (addr >= DBG_REGS && addr < DBG_DMEM) return addr - DBG_REGS === 0 ? 0 : s.regs[addr - DBG_REGS];
-        if (addr >= DBG_DMEM && addr < DBG_COUNT) return s.dmem[addr - DBG_DMEM];
+        if (addr >= DBG_DMEM && addr < DBG_TRAP) return s.dmem[addr - DBG_DMEM];
+        if (addr === DBG_TRAP) return s.trap.cause >>> 0;
+        if (addr === DBG_TRAP + 1) return s.trap.pc >>> 0;
+        if (addr === DBG_TRAP + 2) return s.trap.tval >>> 0;
+        if (addr === DBG_TRAP + 3) return 0; // BUILD_ID: el simulador no tiene versión de hardware
         return 0;
     }
   }
@@ -391,7 +425,12 @@ function buildEvents(snap, s, g, fwdOn) {
       push('immGen', 'immgen', 'ID', `Immgen extrae el inmediato ${g.idImm | 0} (${hex32(g.idImm)}).`,
         { imm: g.idImm, immSel: c.imm_sel });
     }
-    if (c.halt) push('haltDetected', 'control', 'ID', 'Se detecta ECALL/EBREAK: el CPU se va a detener.', { id: st.ID.id });
+    if (g.idStop) {
+      const name = TRAP_CAUSE[g.idCause];
+      push('haltDetected', 'control', 'ID', g.idCause === 3 || g.idCause === 11
+        ? `Se detecta ${name.toUpperCase()}: cuando llegue a EX, el CPU se va a detener.`
+        : `Se detecta un trap (${name}): viaja con la instrucción y actúa en EX, por si estaba en el camino equivocado.`, { id: st.ID.id, cause: g.idCause });
+    }
     for (const [flag, reg, val, op] of [[g.bypassA, g.idRs1, g.idRdata1, 'A'], [g.bypassB, g.idRs2, g.idRdata2, 'B']]) {
       if (flag) push('bypassWB', 'regfile', 'ID', `Bypass WB->ID: x${reg} se toma directo de lo que se está escribiendo (${hex32(val)}).`,
         { operand: op, reg, value: val });
@@ -434,7 +473,11 @@ function buildEvents(snap, s, g, fwdOn) {
   } else {
     push('bubble', 'idex', 'EX', 'Burbuja en EX: no hay instrucción real en esta etapa.', { cause: s.idex.cause });
   }
-  if (g.redirect) {
+  if (g.exExc) {
+    push('trap', 'branch', 'EX', `Trap: ${TRAP_CAUSE[g.exExcCause]} (causa ${g.exExcCause}). La instrucción no escribe nada y el CPU se detiene.`,
+      { cause: g.exExcCause, tval: g.exExcTval });
+  }
+  if (g.redirect && !g.exExc) {
     push('flush', 'flush', 'EX', 'Redirect: se descartan las 2 instrucciones que seguían al salto (IF/ID e ID/EX).',
       { target: g.redirectTarget, killed: [st.ID.id, st.IF.id].filter((x) => x !== null) });
   }
@@ -443,6 +486,9 @@ function buildEvents(snap, s, g, fwdOn) {
   if (g.memWrite) push('memWrite', 'dmem', 'MEM', `Escritura de ${hex32(g.memWData)} en dmem[${hex32(g.memAddr)}].`, { addr: g.memAddr, value: g.memWData, funct3: s.exmem.funct3, be: g.memBe });
   // WB
   if (g.regWrite && g.wbRd !== 0) push('writeback', 'memwb', 'WB', `Se escribe ${hex32(g.wbData)} en x${g.wbRd}.`, { rd: g.wbRd, value: g.wbData });
-  if (snap.halted) push('halted', 'memwb', 'WB', 'El ECALL/EBREAK llegó a WB: el CPU está detenido.', {});
+  if (snap.halted) {
+    const t = s.trap, nm = TRAP_CAUSE[t.cause] || '?';
+    push('halted', 'memwb', 'WB', t.cause === 3 || t.cause === 11 ? `El ${nm.toUpperCase()} llegó a WB: el CPU está detenido.` : `Trap fatal (${nm}, causa ${t.cause}) en pc=${hex32(t.pc)}: el CPU está detenido.`, { cause: t.cause, pc: t.pc, tval: t.tval });
+  }
   return ev;
 }

@@ -29,7 +29,7 @@ export default {
     inThisProject: `
       <p>Es ${g('module:imem', 'imem')} (instancia <code>u_imem</code>), parametrizada por <code>ADDR_W</code> (por defecto 10, o sea 2<sup>10</sup> bytes = 1 KB = 256 palabras) y un <code>INIT_FILE</code> opcional para simulación.</p>
       <ul>
-        <li><b>Lectura combinacional</b>: <code>assign instr = mem[addr[ADDR_W-1:2]]</code>. No hay registro de salida; la instrucción aparece en el mismo ciclo en que el PC cambia. Se descartan los 2 bits bajos y también los bits altos del PC: un PC fuera del rango <i>da la vuelta</i> (wrap-around) sin error.</li>
+        <li><b>Lectura combinacional</b>: <code>assign instr = mem[addr[ADDR_W-1:2]]</code>. No hay registro de salida; la instrucción aparece en el mismo ciclo en que el PC cambia. Se descartan los 2 bits bajos. Un PC fuera de la imem no se ejecuta: en ID se marca como trap (causa 1, instrucción fuera de la imem).</li>
         <li><b>Arranque</b>: un bloque <code>initial</code> llena todo con ${g('NOP')} (<code>0x00000013</code>) y, si hay <code>INIT_FILE</code>, lo pisa con <code>$readmemh</code>.</li>
         <li><b>Puerto de escritura de bytes</b>: <code>wr_en</code>, <code>wr_addr</code>, <code>wr_data[7:0]</code>. La palabra se calcula con ${g('wr_word')} (<code>wr_addr[ADDR_W-1:2]</code>) y un <code>case (wr_addr[1:0])</code> escribe uno de los 4 bytes (little-endian: el byte k del programa cae en la dirección k). Lo usa la debug unit para cargar el programa que llega por UART, de a un byte.</li>
         <li>La escritura <b>no depende de <code>en</code></b> (el pausado del CPU): el CPU está en reset mientras se carga.</li>

@@ -143,3 +143,30 @@ export function branchTaken(funct3, zero, lt, ltu) {
 }
 
 export const hex32 = (v) => '0x' + (v >>> 0).toString(16).padStart(8, '0');
+
+// illegal_check.v: toda codificación que no es RV32I (sin Zicsr ni Zifencei) es ilegal.
+export function illegalCheck(w) {
+  w >>>= 0;
+  const op = w & 0x7f, f3 = (w >>> 12) & 7, f7 = w >>> 25;
+  const ecall = w === 0x00000073, ebreak = w === 0x00100073;
+  let illegal;
+  switch (op) {
+    case 0b0110111: case 0b0010111: case 0b1101111: illegal = false; break;
+    case 0b1100111: illegal = f3 !== 0; break;
+    case 0b1100011: illegal = f3 === 2 || f3 === 3; break;
+    case 0b0000011: illegal = f3 === 3 || f3 === 6 || f3 === 7; break;
+    case 0b0100011: illegal = (f3 & 4) !== 0 || f3 === 3; break;
+    case 0b0010011: illegal = f3 === 1 ? f7 !== 0 : f3 === 5 ? (f7 !== 0 && f7 !== 0x20) : false; break;
+    case 0b0110011: illegal = !(f7 === 0 || (f7 === 0x20 && (f3 === 0 || f3 === 5))); break;
+    case 0b0001111: illegal = f3 !== 0; break;
+    case 0b1110011: illegal = !(ecall || ebreak); break;
+    default: illegal = true;
+  }
+  return { illegal, ecall, ebreak };
+}
+
+// Códigos de causa (los de mcause) y su nombre.
+export const TRAP_CAUSE = {
+  0: 'salto a una dirección no alineada', 1: 'instrucción fuera de la imem', 2: 'instrucción ilegal', 3: 'ebreak',
+  4: 'load desalineado', 5: 'load fuera de la dmem', 6: 'store desalineado', 7: 'store fuera de la dmem', 11: 'ecall',
+};

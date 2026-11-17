@@ -2,8 +2,8 @@ import { h, clear } from './dom.js';
 import { HOME } from '../content/index.js';
 
 /**
- * Pantalla de inicio (panel izquierdo): título, intro, caminos de entrada, qué incluye y link al repo.
- * callbacks: { onPath(pathId) }   pathId: 'entender' | 'construir' | 'simular' | 'debug'
+ * Pantalla de inicio (panel izquierdo): título, intro, números clave, caminos de entrada y link al repo.
+ * callbacks: { onPath(pathId) }   pathId: 'entender' | 'construir' | 'simular' | 'verificacion' | 'debug'
  */
 export function createHome(root, cb = {}) {
   clear(root);
@@ -12,16 +12,11 @@ export function createHome(root, cb = {}) {
     h('h1', {}, HOME.title),
     h('p', { class: 'lead' }, HOME.tagline),
     h('div', { class: 'hero-intro prose', html: HOME.intro }),
+    h('div', { class: 'facts' }, HOME.facts.map((f) => h('div', { class: 'fact' }, h('b', {}, f.k), h('span', {}, f.v)))),
     h('h3', { class: 'hero-h' }, 'Por dónde empezar'),
-    h('div', { class: 'path-grid' }, HOME.paths.map((p, i) => h('button', { class: 'path-card p-' + p.id, type: 'button', onclick: () => cb.onPath && cb.onPath(p.id) },
-      h('span', { class: 'pc-n' }, String(i + 1)),
+    h('div', { class: 'path-grid' }, HOME.paths.map((p, i) => h('button', { class: 'path-card p-' + p.id + (i === 0 ? ' main' : ''), type: 'button', onclick: () => cb.onPath && cb.onPath(p.id) },
       h('b', {}, p.title),
       h('span', { class: 'pc-t' }, p.text),
       h('span', { class: 'pc-cta' }, p.cta + ' →')))),
-    h('h3', { class: 'hero-h' }, 'Qué incluye'),
-    h('div', { class: 'feat-grid' }, HOME.features.map((f) => h('div', { class: 'feat' },
-      h('span', { class: 'feat-i', 'aria-hidden': 'true' }, f.icon),
-      h('b', {}, f.title),
-      h('span', {}, f.text)))),
     h('a', { class: 'btn ghost hero-repo', href: HOME.repo.href, target: '_blank', rel: 'noopener' }, HOME.repo.label + ' ↗')));
 }

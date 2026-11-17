@@ -37,7 +37,7 @@ export default {
   ],
   grid: [14, 9],
   ports: [
-    P('i_clk', 'in', 1, 'b', 'clk (50 MHz)', 'Reloj del sistema.'),
+    P('i_clk', 'in', 1, 'b', 'clk (70 MHz)', 'Reloj del sistema.'),
     P('i_reset', 'in', 1, 'b', 'sys_reset', 'Reset sincrónico (lo usa REGS).'),
     P('i_rx', 'in', 1, 'l', 'rx_sync (línea serie sincronizada)', 'Línea serie. Reposo = 1.'),
     P('i_tick', 'in', 1, 'l', 'BAUD_GEN', 'Pulso a 16&times; el baud rate.'),

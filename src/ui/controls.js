@@ -70,6 +70,11 @@ export function createControls(root, cb = {}) {
     if (d.running !== undefined) { running = d.running; bRun.textContent = running ? '❚❚ Pausa' : '▶ Run'; bRun.classList.toggle('running', running); }
     if (d.canBack !== undefined) bBack.disabled = !d.canBack;
     if (d.halted !== undefined) { stateTag.style.display = d.halted ? '' : 'none'; bStep.disabled = d.halted; bRun.disabled = d.halted; }
+    if (d.trap !== undefined) {
+      const t = d.trap;
+      stateTag.textContent = t && t.fatal ? 'TRAP · ' + t.name : 'HALT';
+      stateTag.title = t ? `Causa ${t.cause} (${t.name}) en pc 0x${(t.pc >>> 0).toString(16).padStart(8, '0')}` : '';
+    }
     if (d.cpi !== undefined) {
       const c = d.cpi;
       const cv = cpiBox.querySelector('.cpi-v');

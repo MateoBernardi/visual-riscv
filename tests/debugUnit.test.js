@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import { Pipeline, DebugUnit, encodeLoad, decodeDump, decodeWords, BAUD, bytesToMs } from '../src/sim/index.js';
 
-const SIM = '/home/mateo/facu/arquitectura-de-computadoras/project_4/project_4.srcs/sim_1/new/';
+const SIM = '/home/mateo/facu/arquitectura-de-computadoras/project_4/verif/system/';
 const hexWords = (f) => fs.readFileSync(SIM + f, 'utf8').trim().split(/\s+/).map((h) => parseInt(h, 16));
 const PROG = hexWords('pipeline_prog.hex');
 const EXP = hexWords('pipeline_exp.hex');
@@ -31,7 +31,7 @@ const dump = () => {
 const runUntilTx = (limit = 5000) => { for (let i = 0; i < limit && tx.length === 0; i++) du.tick(); };
 
 describe('debug unit (secuencia de tb_top_riscv.v)', () => {
-  it('L -> K, D (86 palabras, pc 0), S, R -> K + H espontáneo, S -> H, X -> K, run otra vez', () => {
+  it('L -> K, D (90 palabras, pc 0), S, R -> K + H espontáneo, S -> H, X -> K, run otra vez', () => {
     send(encodeLoad(PROG));
     expect(takeStr()).toBe('K');
     expect(Array.from(pipe.imem.slice(0, 47))).toEqual(PROG);
@@ -39,7 +39,7 @@ describe('debug unit (secuencia de tb_top_riscv.v)', () => {
     expect(pipe.imem[255]).toBe(0x13);
 
     let d = dump();
-    expect(d.count).toBe(86);
+    expect(d.count).toBe(90);
     expect(d.words[0]).toBe(0);
 
     cmd('S'); expect(takeStr()).toBe('K');
@@ -144,12 +144,12 @@ describe('debug unit (secuencia de tb_top_riscv.v)', () => {
     du.tick(100);
     expect(pipe.cycle).toBe(c);
     du.settle();
-    expect(tx.length).toBe(2 + 4 * 86);
+    expect(tx.length).toBe(2 + 4 * 90);
   });
 
   it('helpers de UART', () => {
     expect(BAUD).toBe(19200);
     expect(bytesToMs(1)).toBeCloseTo(10 / 19.2, 5);
-    expect(bytesToMs(1 + 2 + 4 * 86)).toBeCloseTo(((347 * 10) / 19200) * 1000, 5);
+    expect(bytesToMs(1 + 2 + 4 * 90)).toBeCloseTo(((363 * 10) / 19200) * 1000, 5);
   });
 });

@@ -1,9 +1,6 @@
 import { h, clear, hex32, sdec } from './dom.js';
 import { glossify } from './glossary.js';
 
-const GH = 'https://github.com/MateoBernardi/arquitectura-de-computadoras/blob/tp3-RISCV/project_4/';
-export const MODEL_URL = GH + 'host/tests/rv32i_model.py';
-export const TB_URL = GH + 'project_4.srcs/sim_1/new/tb_pipeline.v';
 const ext = (href, text) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
 
 /**
@@ -16,8 +13,8 @@ export function createVerify(root) {
   const prove = h('div', { class: 'vf-prove prose' });
   const golden = h('div', { class: 'vf-golden prose' },
     h('h4', {}, 'Cómo se verifica el diseño real'),
-    h('p', {}, 'Es el enfoque de ', h('b', {}, 'modelo de referencia (golden model)'), ': un modelo de software del RV32I, escrito aparte y mucho más simple que el pipeline, ejecuta el mismo programa instrucción por instrucción. Si el hardware segmentado tiene algún error de forwarding, stall o flush, sus registros y su memoria terminan distintos de los del modelo.'),
-    h('p', {}, 'En el repo, ', ext(MODEL_URL, 'host/tests/rv32i_model.py'), ' es ese modelo y ', ext(TB_URL, 'sim_1/new/tb_pipeline.v'), ' es el testbench que corre el pipeline en simulación y compara contra los valores esperados. Los valores de esta tabla son los que esperaría ese modelo para este programa.'));
+    h('p', {}, 'Esta tabla compara contra valores elegidos a mano: sirve para un programa. El CPU del repo se verifica contra modelos independientes y para cualquier programa: ', h('b', {}, 'riscv-formal'), ' (la spec de RV32I) y ', h('b', {}, 'riscv-arch-test'), ' (resultados de Sail, el modelo oficial), y después en la placa contra la simulación.'),
+    h('p', {}, h('a', { href: '#/verificacion' }, 'Ver las capas y las herramientas →')));
   root.append(h('div', { class: 'vf' },
     h('div', { class: 'vf-main' }, summary, tableBox),
     h('div', { class: 'vf-side' }, h('h4', {}, 'Qué demuestra sobre el hardware'), prove, golden)));

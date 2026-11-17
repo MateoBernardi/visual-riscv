@@ -15,7 +15,7 @@ const ICON = {
 };
 const FSM_ROWS = [['IDLE', 'REPLY'], ['LOAD_LEN_LO', 'LOAD_LEN_HI', 'LOAD_DATA', 'LOAD_FILL'], ['DUMP_CNT_LO', 'DUMP_CNT_HI', 'DUMP_ADDR', 'DUMP_LATCH', 'DUMP_BYTE']];
 const DUMP_NAMES = ['pc', 'if_id.pc', 'if_id.inst', 'id_ex.control', 'id_ex.campos', 'id_ex.pc', 'id_ex.rdata1', 'id_ex.rdata2', 'id_ex.imm', 'ex.alu_a', 'ex.alu_b', 'ex.alu_out', 'ex.target', 'ex.señales', 'ex_mem.control', 'ex_mem.alu_out', 'ex_mem.rdata2', 'ex_mem.rd/f3', 'mem.dmem_rdata', 'mem_wb.control', 'mem_wb.result', 'mem_wb.rd'];
-export const dumpWordName = (k) => (k < 22 ? DUMP_NAMES[k] : k < 54 ? `x${k - 22}` : `dmem[${k - 54}]`);
+export const dumpWordName = (k) => (k < 22 ? DUMP_NAMES[k] : k < 54 ? `x${k - 22}` : k < 86 ? `dmem[${k - 54}]` : ['causa del trap', 'PC del trap', 'dirección del trap', 'versión (BUILD_ID)'][k - 86] || `palabra ${k}`);
 
 export function createExplainPanel(root, cb = {}) {
   const S = { dir: 'rx', lane: ['host', 'sync', 'rx', 'rxfifo', 'fsm', 'imem'], active: null, passed: [], transit: null, nodeVals: {}, chips: null, byte: null, wave: null, rxfsm: null,

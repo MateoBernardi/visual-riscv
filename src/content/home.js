@@ -1,22 +1,23 @@
 // home.js - texto de la pantalla de inicio. Sin DOM.
-// HOME = { title, tagline, intro: html, features: [{icon, title, text}], paths: [{id, title, text, cta}], repo: {label, href} }
+// HOME = { title, tagline, intro: html, facts: [{k, v}], paths: [{id, title, text, cta}], repo: {label, href} }
+import { REPO } from './repo.js';
+
 export const HOME = {
   title: 'visual·RISCV',
-  tagline: 'Una guía visual para entender la implementación de un RV32I hecha en el repositorio.',
-  intro: '<p>Esta página espeja un procesador <b>RISC-V RV32I de 5 etapas</b> escrito en Verilog para una FPGA Nexys4 DDR, junto con su <b>debug unit por UART</b>. Cada bloque enlaza al archivo exacto en GitHub.</p><p>La idea es que, con esta guía y el repo, puedas entender el chip completo, las decisiones de diseño y sus alternativas, y luego armar, probar y verificar tu propio RISC-V desde cero.</p>',
-  features: [
-    { icon: '🧊', title: 'Pipeline en 3D', text: 'Las cinco etapas, los cables y los datos viajando ciclo a ciclo.' },
-    { icon: '🔍', title: 'Por dentro', text: 'Entrá a cada módulo: registros, muxes, FSMs y señales reales.' },
-    { icon: '⚠️', title: 'Hazards explicados', text: 'Forwarding, load-use y flush, con el hardware que los resuelve.' },
-    { icon: '🔌', title: 'Debug por UART', text: 'El protocolo real L/S/R/P/X/D a 19200 baudios.' },
-    { icon: '✅', title: 'Verificación', text: 'Cada ejemplo comprueba sus resultados y explica qué prueban.' },
-    { icon: '🔗', title: 'Links al RTL', text: 'Cada concepto apunta a la línea exacta del repo.' },
+  tagline: 'Por qué el RV32I de este repo está hecho como está, visto por dentro y ciclo a ciclo.',
+  intro: '<p>Un procesador <b>RISC-V RV32I de 5 etapas</b> en Verilog, corriendo en una FPGA Nexys4 DDR, con una <b>debug unit por UART</b> para cargarlo y observarlo desde la PC. Cada bloque del tablero enlaza a su archivo en GitHub.</p>',
+  facts: [
+    { k: '70 MHz', v: 'en el peor caso de timing' },
+    { k: 'CPI 1,34–1,62', v: 'medido en la placa' },
+    { k: '45/45', v: 'chequeos de riscv-formal' },
+    { k: '39/39', v: 'tests oficiales de RV32I' },
   ],
   paths: [
-    { id: 'entender', title: 'Entender este chip', text: 'Doce lecciones: ISA, pipeline, hazards, memoria, HALT, debug unit y UART.', cta: 'Empezar las lecciones' },
-    { id: 'construir', title: 'Construí tu propio RISC-V', text: 'Once pasos prácticos desde el subconjunto de ISA hasta una FPGA verificada.', cta: 'Ver la guía de construcción' },
-    { id: 'simular', title: 'Simular', text: 'Escribí o elegí un programa y mirá cómo viaja por el pipeline.', cta: 'Abrir el simulador' },
-    { id: 'debug', title: 'Debug por UART', text: 'Cargá, ejecutá y volcá el estado con el protocolo de la debug unit.', cta: 'Abrir la consola' },
+    { id: 'entender', title: 'Entender este chip', text: 'Nueve lecciones cortas: cada una, una decisión de diseño y su por qué.', cta: 'Empezar' },
+    { id: 'simular', title: 'Simular', text: 'Elegí un programa y mirá cómo viaja por el pipeline.', cta: 'Abrir el simulador' },
+    { id: 'verificacion', title: 'Cómo se verificó', text: 'Las capas de prueba, de la spec a la placa, y los repos de cada herramienta.', cta: 'Ver la verificación' },
+    { id: 'construir', title: 'Construí tu propio RISC-V', text: 'Siete pasos, en el orden en que conviene darlos.', cta: 'Ver los pasos' },
+    { id: 'debug', title: 'Debug por UART', text: 'El protocolo real de la debug unit, byte a byte.', cta: 'Abrir la consola' },
   ],
-  repo: { label: 'Ver el repositorio en GitHub', href: 'https://github.com/MateoBernardi/arquitectura-de-computadoras/tree/tp3-RISCV/project_4' },
+  repo: { label: 'Ver project_4 en GitHub', href: `https://github.com/${REPO.owner}/${REPO.repo}/tree/main/project_4` },
 };

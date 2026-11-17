@@ -29,7 +29,7 @@ export default {
   refs: [{ label: 'o_tx', sym: 'o_tx' }, { label: 'o_state', sym: 'o_state' }],
   grid: [10, 6],
   ports: [
-    P('i_clk', 'in', 1, 'b', 'clk (50 MHz)', 'Reloj.'),
+    P('i_clk', 'in', 1, 'b', 'clk (70 MHz)', 'Reloj.'),
     P('i_reset', 'in', 1, 'b', 'sys_reset', 'Reset sincrónico.'),
     P('i_state_next', 'in', 2, 'l', 'FSM', 'Próximo estado.'),
     P('i_s_next', 'in', 4, 'l', 'COMB', 'Próximo <code>s</code>.'),

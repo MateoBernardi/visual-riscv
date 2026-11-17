@@ -29,7 +29,7 @@ export default {
     inThisProject: `
       <p>Hay un mux por operando, ambos escritos en un único <code>always @(*)</code> con un <code>case</code> sobre el selector que entrega ${g('u_fwd', 'forward_unit', F)}:</p>
       <ul>
-        <li><code>2'b10</code>: ${g('fwd_a_val')} / ${g('fwd_b_val')} toman ${g('mem_result')} (la instrucción que está ahora en MEM, hace 1 instrucción). Ojo: es <code>mem_result</code>, el valor ya elegido por el mux <code>wb_sel</code>, no <code>mem_alu_out</code>; por eso también se reenvía el resultado de un load, un PC+4 o un LUI.</li>
+        <li><code>2'b10</code>: ${g('fwd_a_val')} / ${g('fwd_b_val')} toman ${g('mem_fwd')} (la instrucción que está ahora en MEM): el resultado de la ALU, PC+4 o el inmediato de LUI, nunca el dato de la dmem. El dato de un load llega desde WB, después del stall.</li>
         <li><code>2'b01</code>: toman ${g('wb_result')} (la instrucción en WB, hace 2).</li>
         <li><code>default</code> (<code>00</code>): toman <code>ex_rdata1</code> / <code>ex_rdata2</code>, lo que leyó el regfile en ID.</li>
       </ul>

@@ -25,11 +25,11 @@ export default {
       <p>Por último, la debug unit controla al CPU de manera <i>sincrónica</i>: no corta ni filtra el reloj, solo le da o le quita la habilitación (<code>cpu_enable</code>) y lo resetea (<code>cpu_reset</code>). Cargar un programa nuevo no necesita resintetizar: alcanza con escribir la memoria de instrucciones y reiniciar el pipeline, y por eso se separan dos tipos de reset: el del sistema (que también reinicia la UART) y el del CPU solo.</p>`,
     inThisProject: `
       <p>Este módulo es solo cableado: instancia ${L('FSM')}, ${L('COMB')} y ${L('REGS')} y conecta los puertos. La FSM recibe el estado actual desde REGS (<code>state</code>, <code>run</code>, <code>step</code>, <code>cpu_rst</code>, <code>overflow</code>) y las banderas de COMB (<code>len_zero</code>, <code>load_last</code>, <code>in_range</code>, <code>dbg_count_zero</code>, <code>dbg_last</code>, <code>byte_last</code>); devuelve los próximos valores y las señales de control. COMB aplica esas señales a los registros de datos y devuelve sus próximos valores; REGS los captura en <code>posedge i_clk</code>.</p>
-      <p><b>Protocolo</b> (host &rarr; FPGA, un byte de comando, un byte de respuesta): <code>L</code> carga (<code>n_lo n_hi</code> y <code>4n</code> bytes little-endian; contesta <code>K</code>, o <code>E</code> si no entra), <code>S</code> un ciclo, <code>R</code> correr, <code>P</code> pausar, <code>X</code> reset del CPU (todos contestan <code>K</code>, o <code>H</code> si el CPU ya está en halt, <code>S</code> y <code>R</code>), <code>D</code> volcado (<code>count_lo count_hi</code> + <code>count</code> palabras de 32 bits little-endian; el CPU informa <code>count</code> = 86). Cualquier otro byte: <code>?</code>. Una <code>H</code> también puede llegar <b>sola</b> (espontánea) si el CPU llega a halt mientras corre.</p>
+      <p><b>Protocolo</b> (host &rarr; FPGA, un byte de comando, un byte de respuesta): <code>L</code> carga (<code>n_lo n_hi</code> y <code>4n</code> bytes little-endian; contesta <code>K</code>, o <code>E</code> si no entra), <code>S</code> un ciclo, <code>R</code> correr, <code>P</code> pausar, <code>X</code> reset del CPU (todos contestan <code>K</code>, o <code>H</code> si el CPU ya está en halt, <code>S</code> y <code>R</code>), <code>D</code> volcado (<code>count_lo count_hi</code> + <code>count</code> palabras de 32 bits little-endian; el sistema informa <code>count</code> = 90: 89 del CPU y la versión que agrega el top). Cualquier otro byte: <code>?</code>. Una <code>H</code> también puede llegar <b>sola</b> (espontánea) si el CPU llega a halt mientras corre.</p>
       <p><b>Garantías:</b> durante la carga el CPU queda en reset (<code>loading</code>) y al terminar queda detenido con PC = 0; lo que el programa no cubre se rellena con NOP (<code>0x00000013</code>); durante el dump el CPU está congelado (<code>~dumping</code> en <code>o_cpu_enable</code>) y al terminar vuelve al modo previo. Los puertos de salida a la imem (${L('o_imem_write_enable')}, <code>o_imem_write_addr</code>, <code>o_imem_write_data</code>) y ${L('o_dbg_addr')} salen directo de <b>registros</b>: llegan un ciclo después de la decisión de la FSM, y <code>o_dbg_addr</code> se mantiene un ciclo antes de muestrear <code>i_dbg_data</code>, útil si la fuente tuviera latencia (BRAM).</p>`,
     whyThisChoice: `
       <p><b>Monitor propio por UART vs. RISC-V Debug Spec + JTAG.</b> El estándar da halt/resume, breakpoints por hardware y acceso por GDB, pero necesita un Debug Module, un TAP JTAG y CSRs de debug; es mucho más hardware que todo el core. Acá alcanza con cargar, paso a paso, correr y volcar. <b>vs. ILA de Vivado:</b> el ILA ve señales en tiempo real pero consume BRAM, depende de la herramienta y no sirve para cargar un programa.</p>
-      <p><b>Volcado completo de 86 palabras vs. lecturas puntuales.</b> Un solo comando <code>D</code> trae PC, latches, registros y dmem: el host siempre tiene una foto coherente (el CPU está congelado). Cuesta ~346 bytes por UART (&asymp; 180 ms a 19200 baud). Subir el baud rate o usar un FIFO más rápido lo bajaría, pero acopla el timing.</p>
+      <p><b>Volcado completo de 90 palabras vs. lecturas puntuales.</b> Un solo comando <code>D</code> trae PC, latches, registros y dmem: el host siempre tiene una foto coherente (el CPU está congelado). Cuesta 362 bytes por UART (&asymp; 190 ms a 19200 baud). Subir el baud rate o usar un FIFO más rápido lo bajaría, pero acopla el timing.</p>
       <p><b>FSM + COMB + REGS vs. un solo <code>always</code>.</b> Un único proceso secuencial es más corto, pero mezcla "qué hacer" con "qué se guarda" y es más fácil introducir errores de ciclo. Tres módulos cuestan más líneas pero cada uno se verifica por separado.</p>
       <p><b>CPU y reset.</b> La debug unit aporta el reset del CPU (<code>i_reset | cpu_rst | loading</code>) en lugar de conectarlo al reset del sistema, así <code>X</code> y la carga no tocan la UART.</p>`,
   },
@@ -41,7 +41,7 @@ export default {
   ],
   grid: [14, 9],
   ports: [
-    P('i_clk', 'in', 1, 'b', 'clk (50 MHz)', 'Reloj del sistema; solo lo usa REGS.'),
+    P('i_clk', 'in', 1, 'b', 'clk (70 MHz)', 'Reloj del sistema; solo lo usa REGS.'),
     P('i_reset', 'in', 1, 'l', 'sys_reset (reset_gen)', 'Reset sincrónico del sistema. REGS lleva todo a 0; la FSM lo suma a <code>o_cpu_reset</code>.'),
     P('i_data_to_read', 'in', 8, 'l', 'uart', 'Byte en la cabeza del FIFO de RX (comando o dato).'),
     P('i_fifo_rx_empty', 'in', 1, 'l', 'uart', 'FIFO de RX vacío: no hay byte que leer.'),
@@ -57,7 +57,7 @@ export default {
     P('o_imem_write_data', 'out', 8, 'r', 'imem', 'Byte a escribir en la imem.'),
     P('o_dbg_addr', 'out', 16, 'r', 'pc', 'Dirección de la palabra del mapa de debug a leer.'),
     P('i_dbg_data', 'in', 32, 'l', 'pc', 'Palabra del mapa de debug en <code>o_dbg_addr</code>.'),
-    P('i_dbg_count', 'in', 16, 'l', 'pc', 'Cantidad de palabras del mapa (86). Lo define el CPU.'),
+    P('i_dbg_count', 'in', 16, 'l', 'pc', 'Cantidad de palabras del mapa (90): las 89 del CPU más la versión que agrega el top.'),
   ],
   parts: [
     {

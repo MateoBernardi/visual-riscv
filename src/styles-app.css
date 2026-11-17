@@ -317,3 +317,68 @@ button.crumb:hover { background: var(--code-bg); color: var(--teal-d); }
 .popup-layer.stack .rail:not(.m-open) .rail-head { border: 0; padding: 5px 12px; }
 .popup-layer.stack .rail:not(.m-open) .rail-head .eyebrow::after { content: ' ▴'; }
 .popup-layer.stack .rail.m-open .rail-head .eyebrow::after { content: ' ▾ cerrar'; color: var(--muted); }
+.dp-trap { margin: 6px 0; padding: 5px 10px; border-radius: 10px; background: color-mix(in srgb, var(--red) 12%, var(--panel2)); font-size: 12.5px; }
+
+/* --- inicio: números clave y camino principal --- */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr)); gap: 6px; margin-top: 12px; }
+.fact { display: flex; flex-direction: column; padding: 7px 10px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); }
+.fact b { font-family: var(--font-c); font-size: 17px; color: var(--text); }
+.fact span { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
+.path-card.main { grid-column: 1 / -1; background: color-mix(in srgb, var(--teal) 10%, var(--panel2)); }
+.path-card.p-verificacion { border-top: 4px solid #2a9d6a; }
+.path-card b { padding-right: 0; }
+
+/* --- vista Verificación --- */
+.verif { padding-bottom: 18px; }
+.verif > .lead, .verif > .vf-cmd, .verif > .hero-h, .verif > .vp-grid, .verif > .vs-flow, .verif > .vd, .verif > .vt-grid { margin-left: 18px; margin-right: 18px; }
+.verif > .lead.small-lead { font-size: 14.5px; line-height: 1.5; color: var(--text2); margin-top: 6px; }
+.vf-cmd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; }
+.vf-cmd code { font-family: var(--mono); background: var(--text); color: var(--bg); padding: 3px 10px; border-radius: 8px; }
+.vf-cmd a, .vl-links a, .vt-name { color: var(--teal-d); font-weight: 600; text-decoration: none; }
+.vf-cmd a:hover, .vl-links a:hover, .vt-name:hover { text-decoration: underline; }
+:root[data-theme='dark'] .vf-cmd a, :root[data-theme='dark'] .vl-links a, :root[data-theme='dark'] .vt-name { color: var(--teal); }
+.vp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 8px; }
+.vp { padding: 10px 12px; border-radius: 14px; background: var(--panel2); border: 1px solid var(--line); }
+.vp b { font-family: var(--font-c); font-size: 15px; }
+.vp .prose { font-size: 13px; line-height: 1.45; color: var(--text2); } .vp .prose p { margin: 4px 0 0; }
+.vs-flow { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.vs { position: relative; padding-left: 34px; }
+.vs::before { content: ''; position: absolute; left: 12px; top: 28px; bottom: -12px; width: 2px; background: var(--line2); }
+.vs:last-child::before { display: none; }
+.vs-head { display: flex; gap: 10px; align-items: flex-start; margin-left: -34px; margin-bottom: 6px; }
+.vs-n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--text); color: var(--bg); font-family: var(--font-c); font-weight: 600; font-size: 13px; }
+.vs-head b { display: block; font-family: var(--font-c); font-size: 17px; }
+.vs-q { font-size: 13px; color: var(--muted); }
+.vs-layers { display: flex; flex-direction: column; gap: 8px; }
+.vl-card, .vt-card { padding: 10px 12px; border-radius: 14px; background: var(--panel2); border: 1px solid var(--line); scroll-margin: 80px; }
+.vl-card.flash, .vt-card.flash { animation: vflash 1.4s ease; }
+@keyframes vflash { 0%, 40% { border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 30%, transparent); } 100% { box-shadow: none; } }
+.vl-top { display: flex; align-items: baseline; gap: 8px; }
+.vl-top b { font-family: var(--font-c); font-size: 16px; }
+.vl-res { margin-left: auto; font-family: var(--mono); font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, #2a9d6a 18%, var(--panel2)); color: #1d7a52; border: 1px solid color-mix(in srgb, #2a9d6a 40%, transparent); white-space: nowrap; }
+:root[data-theme='dark'] .vl-res { color: #6fd7a6; }
+.vl-card .prose, .vt-card .prose { font-size: 13.5px; line-height: 1.45; } .vl-card .prose p, .vt-card .prose p { margin: 4px 0; }
+.vl-why > summary { cursor: pointer; font-family: var(--font-c); font-weight: 600; font-size: 13px; color: var(--text2); }
+.vl-why .prose { color: var(--text2); }
+.vl-links, .vt-used { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 12.5px; }
+.vt-chip { cursor: pointer; border: 1px solid var(--line2); background: var(--panel); font-size: 11.5px; }
+.vt-chip:hover { border-color: var(--teal); }
+.vd { margin-top: 16px; padding: 12px 14px; border-radius: 14px; border-left: 4px solid var(--orange); background: color-mix(in srgb, var(--orange) 8%, var(--panel2)); }
+.vd h3 { font-size: 16px; margin: 0 0 4px; } .vd .prose { font-size: 13.5px; line-height: 1.5; }
+.vt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 8px; }
+.vt-top { display: flex; flex-direction: column; gap: 1px; }
+.vt-name { font-family: var(--font-c); font-size: 16px; }
+.vt-role { font-size: 12px; color: var(--muted); }
+.app[data-view='verificacion'] .sec[data-v~='verificacion'] { display: block; }
+.app[data-view='verificacion'] .panel-right { display: none !important; }
+.app[data-view='verificacion'] .panel-left { bottom: 14px; }
+@media (min-width: 961px) { .app[data-view='verificacion'] { --lpw: min(640px, 48vw); } .app[data-view='lessons'] { --lpw: min(420px, 32vw); } }
+
+/* --- lecciones: navegación anterior / siguiente y regreso desde el simulador --- */
+.lesson-nav { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.lesson-nav .spacer { flex: 1; }
+.back-pill { position: absolute; z-index: 33; top: 80px; left: calc(var(--lw, 0px) + 14px); pointer-events: auto; max-width: calc(100% - var(--lw, 0px) - var(--rw, 0px) - 260px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app.has-return .cam-hint { display: none !important; }
+.back-pill[hidden] { display: none; }
+.app.in-module .back-pill { top: 124px; }
+@media (max-width: 960px) { .back-pill { top: 62px; left: 10px; } }
