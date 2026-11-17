@@ -4,7 +4,7 @@
 //   {
 //     title, block,
 //     what(ev, snap) -> html   qué pasó en ESTE ciclo (usa los datos del evento)
-//     why: html                por qué existe este mecanismo (primeros principios + qué hace esta implementación)
+//     why: html                por qué existe este mecanismo (primeros principios + qué hace el CPU de ejemplo)
 //     rtl: string              fragmento de Verilog representativo
 //     cost: string             cuánto cuesta en ciclos
 //     hazard?: { kind: 'raw'|'loadUse'|'control'|'falseStall', stage }       solo eventos que representan un hazard
@@ -13,7 +13,7 @@
 //                              resalta esos bloques/cables y muestra el texto.
 //   }
 // Todas las explicaciones hablan de ESTA implementación: otros pipelines tienen más o menos etapas,
-// resuelven los saltos en ID, usan predictores, etc. Cuando hace falta se aclara con "en esta implementación".
+// resuelven los saltos en ID, usan predictores, etc. Cuando hace falta se aclara con "en el CPU de ejemplo".
 
 const hx = (v) => (typeof v === 'number' ? '0x' + (v >>> 0).toString(16) : '?');
 const hx8 = (v) => (typeof v === 'number' ? '0x' + (v >>> 0).toString(16).padStart(8, '0') : '?');
@@ -38,7 +38,7 @@ export const EVENT_THEORY = {
       const a = asmOf(ev, snap, 'IF');
       return `<p>La etapa IF presenta <code>pc = ${hx(pc)}</code> a la memoria de instrucciones y recibe la palabra ${hx8(pick(d, 'inst'))}${a ? ` (${code(a)})` : ''}. En el mismo flanco de reloj el PC pasa a <code>pc + 4</code>, salvo que haya un stall, un halt o una redirección desde EX.</p>`;
     },
-    why: '<p>Cada ciclo se inicia una instrucción nueva: eso es lo que permite al pipeline terminar, idealmente, una instrucción por ciclo. En esta implementación la imem es combinacional (la instrucción aparece en el mismo ciclo en que se presenta la dirección) y se indexa con <code>addr[9:2]</code>: las direcciones son de byte pero cada instrucción mide 4 bytes, así que se descartan los 2 bits bajos.</p><p>Si la memoria fuera una BRAM de lectura síncrona, la instrucción llegaría un ciclo después de presentar el PC y habría que rediseñar IF (por ejemplo, usando la propia BRAM como parte del registro IF/ID).</p>',
+    why: '<p>Cada ciclo se inicia una instrucción nueva: eso es lo que permite al pipeline terminar, idealmente, una instrucción por ciclo. En el CPU de ejemplo la imem es combinacional (la instrucción aparece en el mismo ciclo en que se presenta la dirección) y se indexa con <code>addr[9:2]</code>: las direcciones son de byte pero cada instrucción mide 4 bytes, así que se descartan los 2 bits bajos.</p><p>Si la memoria fuera una BRAM de lectura síncrona, la instrucción llegaría un ciclo después de presentar el PC y habría que rediseñar IF (por ejemplo, usando la propia BRAM como parte del registro IF/ID).</p>',
     rtl: "assign instr = mem[addr[ADDR_W-1:2]];\n...\nassign pc_next = redirect ? redirect_target : (pc + 32'd4);",
     cost: '0 ciclos extra (1 instrucción por ciclo)',
   },
@@ -56,7 +56,7 @@ export const EVENT_THEORY = {
       }
       return `<p>La unidad de control decodifica ${a ? code(a) : 'la instrucción de IF/ID'} mirando <code>opcode</code>, <code>funct3</code> y <code>funct7</code>.${extra}</p>`;
     },
-    why: '<p>La instrucción es solo un número de 32 bits; alguien tiene que traducirlo a "qué hardware se enciende". En esta implementación esa traducción es <code>control.v</code>: un <code>case(opcode)</code> puramente combinacional, con valores seguros por defecto (un opcode desconocido se comporta como NOP). Las señales no se usan todas en ID: viajan por los registros de pipeline junto a la instrucción y se consumen en la etapa que las necesita (el control "acompaña" al dato).</p><p>Hay diseños que separan un control principal (por opcode) de un control de ALU (por funct3/funct7); acá todo está en un solo decodificador porque el conjunto es chico.</p>',
+    why: '<p>La instrucción es solo un número de 32 bits; alguien tiene que traducirlo a "qué hardware se enciende". En el CPU de ejemplo esa traducción es <code>control.v</code>: un <code>case(opcode)</code> puramente combinacional, con valores seguros por defecto (un opcode desconocido se comporta como NOP). Las señales no se usan todas en ID: viajan por los registros de pipeline junto a la instrucción y se consumen en la etapa que las necesita (el control "acompaña" al dato).</p><p>Hay diseños que separan un control principal (por opcode) de un control de ALU (por funct3/funct7); acá todo está en un solo decodificador porque el conjunto es chico.</p>',
     rtl: "case (opcode)\n  R:    begin reg_write=1; alu_src=0; ... end\n  LOAD: begin reg_write=1; alu_src=1; mem_read=1; wb_sel=2'b01; end\n  SYS:  halt=1;\nendcase",
     cost: '0 ciclos',
   },
@@ -119,7 +119,7 @@ export const EVENT_THEORY = {
       const d = dat(ev);
       return `<p>La instrucción de EX necesita ${code(xr(pick(d, 'reg', 'rs')))} (${opName(d)}), que la instrucción inmediatamente anterior (hoy en MEM) todavía no escribió en el regfile. forward_unit pone <code>forward = 2'b10</code> y el mux toma <code>mem_result = ${hx(pick(d, 'value'))}</code>, el valor que ya salió del mux wb_sel.</p>`;
     },
-    why: '<p>El dato ya existe aunque no esté en el regfile. En lugar de esperar 2 ciclos hasta que la instrucción productora llegue a WB, se lo manda "hacia atrás" por un cable. Si dos instrucciones seguidas escriben el mismo registro, EX/MEM tiene prioridad sobre MEM/WB porque contiene el valor más reciente.</p><p>En esta implementación lo que se adelanta es <code>mem_result</code> (después del mux wb_sel), no solo la salida de la ALU: por eso también sirven LUI, JAL (PC+4) y el dato de un load. Con un load a distancia 1 no alcanza, porque el dato de memoria recién se conoce al final de MEM: ver load-use.</p>',
+    why: '<p>El dato ya existe aunque no esté en el regfile. En lugar de esperar 2 ciclos hasta que la instrucción productora llegue a WB, se lo manda "hacia atrás" por un cable. Si dos instrucciones seguidas escriben el mismo registro, EX/MEM tiene prioridad sobre MEM/WB porque contiene el valor más reciente.</p><p>En el CPU de ejemplo lo que se adelanta es <code>mem_result</code> (después del mux wb_sel), no solo la salida de la ALU: por eso también sirven LUI, JAL (PC+4) y el dato de un load. Con un load a distancia 1 no alcanza, porque el dato de memoria recién se conoce al final de MEM: ver load-use.</p>',
     rtl: "if (mem_reg_write && (mem_rd != 5'b0)) begin\n  if (mem_rd == ex_rs1) forward_a = 2'b10;\n  if (mem_rd == ex_rs2) forward_b = 2'b10;\nend",
     cost: '0 ciclos (se evita una burbuja de 2 ciclos)',
   },
@@ -154,7 +154,7 @@ export const EVENT_THEORY = {
     what(ev, snap) {
       const d = dat(ev);
       const opd = d.operand || (d.matchRs1 && d.matchRs2 ? 'A y B' : d.matchRs1 ? 'A' : d.matchRs2 ? 'B' : '');
-      return `<p>Hay un load en EX que escribe ${code(xr(pick(d, 'reg', 'ex_rd')))} y la instrucción en ID lo lee${opd ? ` (operando ${opd})` : ''}. El dato recién se obtiene al final de MEM, así que este diseño espera un ciclo. hazard_unit levanta <code>stall</code>: el PC y IF/ID se congelan y se inserta una burbuja en ID/EX.</p>`;
+      return `<p>Hay un load en EX que escribe ${code(xr(pick(d, 'reg', 'ex_rd')))} y la instrucción en ID lo lee${opd ? ` (operando ${opd})` : ''}. El dato recién se obtiene al final de MEM, así que el CPU de ejemplo espera un ciclo. hazard_unit levanta <code>stall</code>: el PC y IF/ID se congelan y se inserta una burbuja en ID/EX.</p>`;
     },
     why: '<p>En un pipeline clásico es el único RAW que el forwarding no resuelve: el valor sale de dmem al final de MEM, pero el consumidor lo necesita al principio de EX en ese mismo ciclo, y un cable no puede viajar hacia atrás en el tiempo. Una burbuja basta: al ciclo siguiente el load está en WB y el consumidor toma el dato por forwarding MEM/WB.</p><p>Acá la dmem se lee en el mismo ciclo, así que se podría adelantar el dato desde MEM y no frenar. Se midió: sin stall el reloj baja a 60 MHz porque la dmem queda en el camino crítico; con stall y el load adelantado desde WB se llega a 70 MHz, y gana en todos los programas. Ver la lección de load-use.</p><p>El costo se puede reducir por software (el compilador pone una instrucción independiente entre el load y su uso; MIPS I lo exponía como "load delay slot") o por hardware (una memoria de menor latencia). En otros pipelines con más etapas de memoria el stall es de 2 ciclos o más.</p>',
     rtl: "if (ex_mem_read && (ex_rd != 5'd0))\n  if ((ex_rd == id_rs1) || (ex_rd == id_rs2))\n    stall = 1'b1;",
@@ -242,7 +242,7 @@ export const EVENT_THEORY = {
       const jalr = pick(d, 'is_jalr', 'jalr');
       return `<p>${jalr ? 'JALR' : 'JAL'} llega a EX y siempre redirige al PC hacia <code>${hx(t)}</code>${jalr ? ' (lo calcula la ALU como <code>(rs1+imm) &amp; ~1</code>)' : ' (lo calcula branch_unit como <code>pc+imm</code>)'}. La dirección de retorno <code>PC+4</code> viaja por <code>wb_sel=10</code> y se escribe en <code>rd</code> al llegar a WB.</p>`;
     },
-    why: '<p>Un salto incondicional se sabe que se toma ya en ID, y el destino de JAL no depende de ningún registro; pero esta implementación no lo aprovecha: lo resuelve en EX igual que un branch, para no duplicar hardware. Otros diseños resuelven JAL en ID y pierden 1 ciclo en vez de 2.</p><p>JALR es inherentemente más lento: necesita el valor de un registro (que puede venir por forwarding) antes de conocer el destino. Los procesadores de alto rendimiento usan una pila de direcciones de retorno para predecirlo.</p>',
+    why: '<p>Un salto incondicional se sabe que se toma ya en ID, y el destino de JAL no depende de ningún registro; pero el CPU de ejemplo no lo aprovecha: lo resuelve en EX igual que un branch, para no duplicar hardware. Otros diseños resuelven JAL en ID y pierden 1 ciclo en vez de 2.</p><p>JALR es inherentemente más lento: necesita el valor de un registro (que puede venir por forwarding) antes de conocer el destino. Los procesadores de alto rendimiento usan una pila de direcciones de retorno para predecirlo.</p>',
     rtl: "wire [31:0] redirect_target = ex_is_jalr ? (alu_out & ~32'h1) : bu_target;\nassign redirect = branch_taken | ex_jump;",
     cost: '2 burbujas',
   },
@@ -260,7 +260,7 @@ export const EVENT_THEORY = {
       const d = dat(ev);
       return `<p>flush_unit propaga <code>redirect</code> a <code>flush_if_id</code> y <code>flush_id_ex</code>: las dos instrucciones del camino equivocado${d.killed ? ` (${d.killed})` : ''} se convierten en burbujas (NOP con todas las señales de control en 0). No llegan a modificar registros ni memoria.</p>`;
     },
-    why: '<p>Como todo efecto arquitectónico ocurre en MEM (stores) o WB (registros), basta con anular los registros de pipeline más jóvenes que el salto: no hace falta deshacer nada. Anular significa convertir la instrucción en un NOP, o poner a cero sus señales de control, o marcarla con un bit de "válida" (esta implementación usa lo primero).</p><p>Un flush nunca coincide con un stall de load-use en este core: el stall exige un load en EX y el redirect exige un branch/jump en EX, y EX solo tiene una instrucción. En diseños donde pueden coincidir, hay que decidir cuál tiene prioridad (el flush debería ganar).</p>',
+    why: '<p>Como todo efecto arquitectónico ocurre en MEM (stores) o WB (registros), basta con anular los registros de pipeline más jóvenes que el salto: no hace falta deshacer nada. Anular significa convertir la instrucción en un NOP, o poner a cero sus señales de control, o marcarla con un bit de "válida" (el CPU de ejemplo usa lo primero).</p><p>Un flush nunca coincide con un stall de load-use en el CPU de ejemplo: el stall exige un load en EX y el redirect exige un branch/jump en EX, y EX solo tiene una instrucción. En diseños donde pueden coincidir, hay que decidir cuál tiene prioridad (el flush debería ganar).</p>',
     rtl: "assign flush_if_id = redirect;\nassign flush_id_ex = redirect;",
     cost: '2 burbujas',
   },
@@ -285,7 +285,7 @@ export const EVENT_THEORY = {
       const addr = pick(d, 'addr') ?? s.memAddr, val = pick(d, 'value', 'data') ?? s.memRData;
       return `<p>El load lee la palabra en <code>addr = ${hx(addr)}</code> (índice de palabra <code>addr[9:2]</code>, byte dentro de la palabra <code>addr[1:0]</code>). dmem selecciona el byte o la media palabra según <code>funct3</code> y extiende con signo (LB, LH) o con ceros (LBU, LHU) para entregar <code>${hx(val)}</code>.</p>`;
     },
-    why: '<p>En esta implementación la lectura de dmem es combinacional (se infiere como RAM distribuida o LUTRAM en la FPGA). Por eso el dato aparece dentro de MEM, y para loads el mux wb_sel lo toma de allí. Si la memoria fuese una BRAM síncrona, el dato llegaría un ciclo después, y habría que absorber esa latencia (por ejemplo, una etapa más o un stall más largo en load-use).</p>',
+    why: '<p>En el CPU de ejemplo la lectura de dmem es combinacional (se infiere como RAM distribuida o LUTRAM en la FPGA). Por eso el dato aparece dentro de MEM, y para loads el mux wb_sel lo toma de allí. Si la memoria fuese una BRAM síncrona, el dato llegaría un ciclo después, y habría que absorber esa latencia (por ejemplo, una etapa más o un stall más largo en load-use).</p>',
     rtl: "3'b000: rdata = {{24{b[7]}}, b};   // LB\n3'b010: rdata = word;            // LW\n3'b100: rdata = {24'b0, b};      // LBU",
     cost: '0 ciclos (pero genera load-use stall si se usa de inmediato)',
   },
@@ -309,7 +309,7 @@ export const EVENT_THEORY = {
       const rd = pick(d, 'rd', 'reg') ?? s.wbRd, v = pick(d, 'value', 'data') ?? s.wbData;
       return `<p>En WB se escribe <code>${hx(v)}</code> en ${code(xr(rd))} en el próximo flanco del reloj. El valor ya fue seleccionado en MEM por el mux <code>wb_sel</code> y viaja por MEM/WB como <code>wb_result</code>. Escribir en <code>x0</code> no tiene efecto.</p>`;
     },
-    why: '<p>En esta implementación la etapa WB es solo un registro y el cable de vuelta al regfile: el trabajo de elegir entre ALU, dmem, PC+4 e inmediato se adelantó a MEM para poder hacer forwarding con ese mismo valor ya seleccionado. Es una decisión de este diseño; en el libro clásico el mux está en WB.</p>',
+    why: '<p>En el CPU de ejemplo la etapa WB es solo un registro y el cable de vuelta al regfile: el trabajo de elegir entre ALU, dmem, PC+4 e inmediato se adelantó a MEM para poder hacer forwarding con ese mismo valor ya seleccionado. Es una decisión de el CPU de ejemplo; en el libro clásico el mux está en WB.</p>',
     rtl: "else if (we && waddr != 5'd0) regs[waddr] <= wdata;",
     cost: '0 ciclos',
   },
@@ -354,7 +354,7 @@ export const EVENT_THEORY = {
       const d = dat(ev);
       return `<p>La etapa ${ev && ev.stage ? '<b>' + ev.stage + '</b> ' : ''}contiene una burbuja${d.cause ? ` (causa: ${d.cause})` : ''}: una "instrucción" con todas las señales de control en 0, que no escribe registros, ni memoria, ni redirige el PC.</p>`;
     },
-    why: '<p>Las burbujas son el precio de los hazards. Cada una es un ciclo en el que una etapa no hace trabajo útil, y se refleja directamente en el CPI: <code>CPI = 1 + burbujas / instrucciones</code>. En esta implementación se fabrican poniendo a cero el control en ID/EX (por stall o flush) o cargando un NOP en IF/ID.</p>',
+    why: '<p>Las burbujas son el precio de los hazards. Cada una es un ciclo en el que una etapa no hace trabajo útil, y se refleja directamente en el CPI: <code>CPI = 1 + burbujas / instrucciones</code>. En el CPU de ejemplo se fabrican poniendo a cero el control en ID/EX (por stall o flush) o cargando un NOP en IF/ID.</p>',
     rtl: "// flush: los registros de control se ponen en 0\nif (flush) begin reg_write <= 0; mem_read <= 0; ... end",
     cost: '1 ciclo de una etapa sin trabajo útil',
   },
@@ -362,15 +362,15 @@ export const EVENT_THEORY = {
 
 export const GLOSSARY = {
   'ISA': '<p>Arquitectura del conjunto de instrucciones: el <b>contrato</b> entre software y hardware. Define qué instrucciones existen, cómo se codifican, cuántos registros hay y qué efecto tiene cada una. RISC-V es una ISA; un programa escrito para ella debe dar el mismo resultado en cualquier implementación.</p>',
-  'Microarquitectura': '<p>La forma concreta de cumplir el contrato de la ISA: monociclo, multiciclo, segmentada, con o sin predictores. Cambia <i>cuándo</i> pasan las cosas, nunca <i>qué resultado</i> dan. Este repo implementa RV32I con un pipeline in-order de 5 etapas.</p>',
-  'RV32I': '<p>Conjunto base de instrucciones enteras de 32 bits de RISC-V: 32 registros de 32 bits, aritmética, lógica, loads/stores, branches y saltos. No incluye multiplicación (extensión M) ni CSRs/excepciones. Esta implementación cubre las instrucciones de usuario más ecall/ebreak como halt.</p>',
-  'Pipeline': '<p>Técnica que solapa la ejecución de varias instrucciones dividiéndolas en etapas (IF, ID, EX, MEM, WB en esta implementación; otros diseños usan más o menos). Como en una línea de montaje, cada etapa trabaja en una instrucción distinta en cada ciclo.</p>',
+  'Microarquitectura': '<p>La forma concreta de cumplir el contrato de la ISA: monociclo, multiciclo, segmentada, con o sin predictores. Cambia <i>cuándo</i> pasan las cosas, nunca <i>qué resultado</i> dan. El CPU de ejemplo implementa RV32I con un pipeline in-order de 5 etapas.</p>',
+  'RV32I': '<p>Conjunto base de instrucciones enteras de 32 bits de RISC-V: 32 registros de 32 bits, aritmética, lógica, loads/stores, branches y saltos. No incluye multiplicación (extensión M) ni CSRs (Zicsr). El CPU de ejemplo implementa RV32I completo: ecall, ebreak y las excepciones lo detienen.</p>',
+  'Pipeline': '<p>Técnica que solapa la ejecución de varias instrucciones dividiéndolas en etapas (IF, ID, EX, MEM, WB en el CPU de ejemplo; otros diseños usan más o menos). Como en una línea de montaje, cada etapa trabaja en una instrucción distinta en cada ciclo.</p>',
   'Hazard': '<p>Situación que impide que la siguiente instrucción se ejecute en el ciclo previsto sin dar un resultado incorrecto. Hay tres tipos: estructurales, de datos y de control.</p>',
   'Hazard RAW': '<p>Read After Write: una instrucción lee un registro que una anterior todavía no escribió. Es el hazard de datos que ocurre en un pipeline in-order. WAR y WAW no pasan acá porque todos leen en ID, escriben en WB y siempre en orden de programa.</p>',
-  'Hazard estructural': '<p>Dos instrucciones necesitan el mismo recurso hardware en el mismo ciclo. Esta implementación lo evita con memorias separadas de instrucciones y de datos (Harvard) y un regfile con 2 lecturas y 1 escritura.</p>',
-  'Hazard de control': '<p>El PC siguiente depende del resultado de un salto que todavía no se resolvió. En esta implementación se resuelve en EX, con 2 instrucciones equivocadas ya en vuelo.</p>',
+  'Hazard estructural': '<p>Dos instrucciones necesitan el mismo recurso hardware en el mismo ciclo. El CPU de ejemplo lo evita con memorias separadas de instrucciones y de datos (Harvard) y un regfile con 2 lecturas y 1 escritura.</p>',
+  'Hazard de control': '<p>El PC siguiente depende del resultado de un salto que todavía no se resolvió. En el CPU de ejemplo se resuelve en EX, con 2 instrucciones equivocadas ya en vuelo.</p>',
   'Burbuja': '<p>Una instrucción vacía (NOP, o control en 0) insertada para ganar tiempo o para anular algo. No hace daño pero tampoco trabajo útil: es un ciclo desperdiciado.</p>',
-  'Stall': '<p>Congelar las etapas anteriores (PC e IF/ID) mientras se inserta una burbuja en las siguientes. En esta implementación lo causa el load-use y, en el modo didáctico sin forwarding, cualquier dependencia RAW.</p>',
+  'Stall': '<p>Congelar las etapas anteriores (PC e IF/ID) mientras se inserta una burbuja en las siguientes. En el CPU de ejemplo lo causa el load-use y, en el modo didáctico sin forwarding, cualquier dependencia RAW.</p>',
   'Flush': '<p>Descartar instrucciones que entraron al pipeline por un camino equivocado, convirtiéndolas en burbujas. Ocurre con branches tomados, saltos y al detectar un halt.</p>',
   'Forwarding': '<p>También llamado bypass. Lleva el resultado de una instrucción directamente desde un registro de pipeline (EX/MEM o MEM/WB) a la entrada de la ALU, sin esperar a que se escriba en el regfile.</p>',
   'Bypass del regfile': '<p>Write-through: si en el mismo ciclo se escribe y se lee el mismo registro, la lectura devuelve el dato nuevo. Evita el hazard de distancia 3 sin pasar por forward_unit.</p>',
@@ -378,38 +378,38 @@ export const GLOSSARY = {
   'CPI': '<p>Ciclos por instrucción. En un pipeline ideal vale 1. Con hazards: <code>CPI = 1 + (burbujas totales) / (instrucciones retiradas)</code>. Junto con el período del reloj y la cantidad de instrucciones fija el tiempo de ejecución: <code>T = N × CPI × T_clk</code>.</p>',
   'IPC': '<p>Instrucciones por ciclo, la inversa del CPI. Los procesadores superescalares superan 1.</p>',
   'Latencia vs throughput': '<p>Latencia: cuánto tarda una instrucción individual de punta a punta (5 ciclos acá). Throughput: cuántas instrucciones terminan por ciclo (hasta 1). El pipeline mejora el throughput, no la latencia (incluso la empeora un poco por el overhead de los registros).</p>',
-  'Camino crítico': '<p>El camino combinacional más largo entre dos registros (incluyendo ruteo en una FPGA). Define el período mínimo del reloj. En esta implementación es un branch que depende de la instrucción anterior: forwarding → ALU → decisión del salto → PC, 13,7 de los 14,3 ns disponibles a 70 MHz.</p>',
+  'Camino crítico': '<p>El camino combinacional más largo entre dos registros (incluyendo ruteo en una FPGA). Define el período mínimo del reloj. En el CPU de ejemplo es un branch que depende de la instrucción anterior: forwarding → ALU → decisión del salto → PC, 13,7 de los 14,3 ns disponibles a 70 MHz.</p>',
   'Ruta crítica': '<p>Sinónimo de camino crítico: el camino combinacional más largo entre dos registros, que define el período mínimo del reloj.</p>',
   'Slack': '<p>Margen de tiempo de un camino: tiempo requerido menos tiempo de llegada. Positivo = cumple; negativo = falla. El peor slack de setup se llama WNS; con él se estima <code>f_max ≈ 1 / (T_clk − WNS)</code>.</p>',
   'Skew': '<p>Diferencia en el instante en que el mismo flanco de reloj llega a dos flip-flops distintos. Lo genera la distribución del reloj, no la lógica de datos; es pequeño con redes globales (BUFG) y grande si el reloj pasa por lógica común.</p>',
   'Setup y hold': '<p>Setup: el dato debe estar estable un tiempo <i>antes</i> del flanco. Hold: debe seguir estable un tiempo <i>después</i>. El análisis estático de timing verifica ambos para todos los caminos entre flip-flops.</p>',
   'Registro de pipeline': '<p>Banco de flip-flops entre dos etapas (IF/ID, ID/EX, EX/MEM, MEM/WB) que guarda los datos y las señales de control de la instrucción que avanza. Todo lo que una instrucción necesita más adelante tiene que viajar con ella.</p>',
-  'Predicción de saltos': '<p>Adivinar el resultado de un branch antes de resolverlo para no perder ciclos. Esta implementación predice "no tomado" de forma implícita, sin hardware extra.</p>',
-  'Penalidad de salto': '<p>Ciclos perdidos cuando la predicción falla. En esta implementación son 2, porque el salto se resuelve en EX.</p>',
+  'Predicción de saltos': '<p>Adivinar el resultado de un branch antes de resolverlo para no perder ciclos. El CPU de ejemplo predice "no tomado" de forma implícita, sin hardware extra.</p>',
+  'Penalidad de salto': '<p>Ciclos perdidos cuando la predicción falla. En el CPU de ejemplo son 2, porque el salto se resuelve en EX.</p>',
   'Extensión de signo': '<p>Replicar el bit más significativo de un valor corto para obtener su equivalente en más bits conservando el valor con signo (−1 de 12 bits sigue siendo −1 de 32). La extensión con ceros, en cambio, la usan lbu y lhu.</p>',
   'Little-endian': '<p>El byte menos significativo se guarda en la dirección más baja. Es el orden de RISC-V y también el de las palabras en el protocolo UART de la debug unit.</p>',
   'Byte lanes': '<p>La dmem se organiza como cuatro bancos de 8 bits (carriles), cada uno con su habilitación de escritura. Permite SB/SH/SW con un solo puerto de escritura y sin tocar los demás bytes de la palabra.</p>',
-  'Alineación': '<p>Un acceso de N bytes está alineado si su dirección es múltiplo de N. En esta implementación un load o store desalineado es una excepción (trap fatal). Otros diseños lo soportan partiéndolo en dos accesos.</p>',
+  'Alineación': '<p>Un acceso de N bytes está alineado si su dirección es múltiplo de N. En el CPU de ejemplo un load o store desalineado es una excepción (trap fatal). Otros diseños lo soportan partiéndolo en dos accesos.</p>',
   'Trap': '<p>Una excepción (instrucción ilegal, acceso o salto desalineado, acceso fuera de memoria) o <code>ecall</code>/<code>ebreak</code>. Sin CSRs no hay manejador, así que acá todo trap es <i>fatal</i>: el CPU se detiene y la debug unit informa la causa, el PC y la dirección.</p>',
   'riscv-formal': '<p>Framework de verificación formal que compara cada instrucción que retira el CPU con la especificación de RISC-V, para cualquier programa. Ver la sección Verificación.</p>',
   'Mutante': '<p>Copia del diseño con un error inyectado a propósito. Si la prueba no falla con el mutante, la prueba no está mirando lo que dice mirar.</p>',
   'Halt preciso': '<p>Al detenerse, todas las instrucciones anteriores completaron y ninguna posterior produjo efectos. Facilita la depuración y es la base de las excepciones precisas.</p>',
   'Enable síncrono': '<p>Entrada de clock enable de un flip-flop: si vale 0, el flip-flop conserva su valor aunque llegue el flanco. Es la forma correcta de "pausar" un diseño sin tocar el reloj; los flip-flops de las FPGA Xilinx tienen un pin CE dedicado.</p>',
-  'Clock gating': '<p>Bloquear el reloj con lógica (por ejemplo, un AND con una habilitación). En una FPGA genera skew, glitches y rompe el análisis de timing, por eso este repo pausa el CPU con enables síncronos.</p>',
+  'Clock gating': '<p>Bloquear el reloj con lógica (por ejemplo, un AND con una habilitación). En una FPGA genera skew, glitches y rompe el análisis de timing, por eso el CPU de ejemplo pausa el CPU con enables síncronos.</p>',
   'MMCM': '<p>Mixed-Mode Clock Manager: bloque de la FPGA que genera relojes de otras frecuencias a partir del oscilador de la placa. Acá convierte 100 MHz en 70 MHz (VCO a 700 MHz, salida dividida por 10) y expone una señal <code>locked</code> que indica cuándo el reloj nuevo es estable.</p>',
   'UART 8N1': '<p>Comunicación serie asincrónica con 8 bits de datos, sin paridad y 1 bit de stop (más un bit de start): 10 tiempos de bit por byte. La debug unit usa 19200 baudios.</p>',
   'Baud rate': '<p>Velocidad de la línea serie en símbolos (bits) por segundo. A 19200 baudios un bit dura unos 52 µs y un byte (10 bits) unos 521 µs. Emisor y receptor deben acordarla de antemano, porque no comparten reloj.</p>',
   'Sobremuestreo': '<p>Muestrear la línea serie 16 veces por bit para encontrar el centro de cada bit y tolerar pequeñas diferencias de reloj. El generador de baud produce un tick cada <code>CLK/(16·baud)</code> ciclos (227 a 70 MHz y 19200).</p>',
   'Metaestabilidad': '<p>Estado indefinido de un flip-flop que captura una señal justo cuando cambia. Puede tardar un tiempo impredecible en resolverse a 0 o a 1. Se mitiga pasando toda señal asincrónica por dos flip-flops en cadena (sincronizador 2FF).</p>',
-  'Sincronizador 2FF': '<p>Dos flip-flops en cadena que reciben una señal asincrónica. El primero puede quedar metaestable; con un ciclo completo para resolverse, el segundo entrega un valor limpio. En este repo lo usan la línea RX y el botón de reset.</p>',
+  'Sincronizador 2FF': '<p>Dos flip-flops en cadena que reciben una señal asincrónica. El primero puede quedar metaestable; con un ciclo completo para resolverse, el segundo entrega un valor limpio. En el CPU de ejemplo lo usan la línea RX y el botón de reset.</p>',
   'FIFO': '<p>Cola primero-en-entrar-primero-en-salir. La UART usa una FIFO de 4 bytes en RX y otra en TX para desacoplar la velocidad del serial de la de la debug unit; si la de TX se llena, la FSM espera.</p>',
-  'FSM': '<p>Máquina de estados finitos. La debug unit es una FSM de 11 estados (IDLE, LOAD_*, DUMP_*, REPLY); en este repo cada FSM se parte en tres módulos: la lógica del próximo estado, el camino de datos combinacional y los registros.</p>',
+  'FSM': '<p>Máquina de estados finitos. La debug unit es una FSM de 11 estados (IDLE, LOAD_*, DUMP_*, REPLY); en el CPU de ejemplo cada FSM se parte en tres módulos: la lógica del próximo estado, el camino de datos combinacional y los registros.</p>',
   'Debug unit': '<p>Bloque de hardware dentro de la FPGA que interpreta comandos de la PC por UART, carga el programa en la imem, controla la ejecución (paso, corrida, pausa, reset) y devuelve el estado del CPU. Es el "depurador" del sistema.</p>',
-  'Dump': '<p>Volcado del estado del CPU hacia la PC: en este repo son 90 palabras de 32 bits (PC, registros de pipeline, señales de EX, los 32 registros, 32 palabras de dmem, la causa del trap y la versión del hardware), precedidas por su cantidad.</p>',
-  'Memoria mapeada (MMIO)': '<p>Periféricos accesibles con loads y stores a direcciones reservadas. En este repo la UART no está mapeada: la debug unit la maneja por hardware, no el programa.</p>',
-  'Harvard': '<p>Arquitectura con memoria de instrucciones y de datos separadas. Esta implementación la usa para que IF y MEM accedan a memoria en el mismo ciclo, evitando el hazard estructural.</p>',
+  'Dump': '<p>Volcado del estado del CPU hacia la PC: en el CPU de ejemplo son 90 palabras de 32 bits (PC, registros de pipeline, señales de EX, los 32 registros, 32 palabras de dmem, la causa del trap y la versión del hardware), precedidas por su cantidad.</p>',
+  'Memoria mapeada (MMIO)': '<p>Periféricos accesibles con loads y stores a direcciones reservadas. En el CPU de ejemplo la UART no está mapeada: la debug unit la maneja por hardware, no el programa.</p>',
+  'Harvard': '<p>Arquitectura con memoria de instrucciones y de datos separadas. El CPU de ejemplo la usa para que IF y MEM accedan a memoria en el mismo ciclo, evitando el hazard estructural.</p>',
   'BRAM': '<p>Block RAM: bloque dedicado de memoria de la FPGA (18/36 Kb). Tiene lectura <b>síncrona</b> (el dato aparece un ciclo después de presentar la dirección). Es ideal para memorias grandes, pero obliga a rediseñar IF/MEM si el pipeline espera lectura inmediata.</p>',
-  'LUTRAM': '<p>RAM distribuida: memoria armada con las LUTs de la FPGA. Tiene lectura <b>asíncrona</b> y sirve para memorias chicas, como el regfile y la dmem de este repo (1 KB).</p>',
+  'LUTRAM': '<p>RAM distribuida: memoria armada con las LUTs de la FPGA. Tiene lectura <b>asíncrona</b> y sirve para memorias chicas, como el regfile y la dmem de el CPU de ejemplo (1 KB).</p>',
   'Testbench autoverificable': '<p>Módulo de simulación que genera estímulos, compara cada resultado contra el valor esperado y reporta solo las diferencias (PASS/FAIL). Permite correr muchos casos después de cada cambio sin mirar formas de onda.</p>',
   'Golden model': '<p>Implementación de referencia, simple e independiente del diseño, contra la que se compara lo que hace el hardware. Acá: la especificación formal de RV32I (riscv-formal) y Sail, el modelo oficial de la ISA (riscv-arch-test).</p>',
   'Pseudoinstrucción': '<p>Instrucción que el ensamblador acepta pero traduce a una real: <code>nop</code>, <code>mv</code>, <code>li</code>, <code>j</code>, <code>ret</code>... No existe en el hardware.</p>',

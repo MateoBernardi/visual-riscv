@@ -29,13 +29,13 @@ export const BUILD_CHECKLIST = [
   // ---- Diseñar
   { id: 'saltos-etapa', group: 'Diseñar', step: 'build-hazards',
     title: 'Decidí en qué etapa resuelvo los saltos, y lo justifiqué',
-    detail: '<p>EX descarta 2 instrucciones y no agrega hardware; ID descarta 1 pero necesita comparador y forwarding hacia ID. Este repo resuelve en EX.</p>' },
+    detail: '<p>EX descarta 2 instrucciones y no agrega hardware; ID descarta 1 pero necesita comparador y forwarding hacia ID. El CPU de ejemplo resuelve en EX.</p>' },
   { id: 'memorias-lectura', group: 'Diseñar', step: 'build-memorias',
     title: 'Decidí si las memorias se leen en el mismo ciclo o en el siguiente',
-    detail: '<p>Cambia el diseño de IF y de MEM. Este repo usa LUTRAM de lectura asíncrona.</p>' },
+    detail: '<p>Cambia el diseño de IF y de MEM. El CPU de ejemplo usa LUTRAM de lectura asíncrona.</p>' },
   { id: 'excepciones', group: 'Diseñar', step: 'build-isa',
     title: 'Decidí qué pasa con lo que no implemento: ilegales, desalineados, fuera de memoria',
-    detail: `<p>La ISA permite tratarlos como trap. Este repo detiene el CPU sin escribir nada e informa la causa: ${gh('pipeline/flow/trap_unit.v', 'module:trap_unit', 'trap_unit.v')}.</p>` },
+    detail: `<p>La ISA permite tratarlos como trap. El CPU de ejemplo se detiene sin escribir nada e informa la causa: ${gh('pipeline/flow/trap_unit.v', 'module:trap_unit', 'trap_unit.v')}.</p>` },
   { id: 'pausa-sin-reloj', group: 'Diseñar', step: 'build-debug',
     title: 'Sé cómo pausar el CPU sin tocar el reloj',
     detail: '<p>Un enable síncrono en cada registro del CPU; la UART y la debug unit siguen siempre.</p>' },
@@ -48,10 +48,10 @@ export const BUILD_CHECKLIST = [
     detail: '<p>La spec (riscv-formal), el modelo oficial (Sail vía riscv-arch-test) y, para la placa, la simulación del propio RTL. Ver la sección <a href="#/verificacion">Verificación</a>.</p>' },
   { id: 'placa-y-pines', group: 'Preparar', step: 'build-timing',
     title: 'Tengo el XDC con el reloj y los pines de mi placa',
-    detail: `<p>Sin la restricción del reloj no hay análisis de timing. En este repo: ${a(P4 + 'constraints/nexys4ddr_top.xdc', 'nexys4ddr_top.xdc')}.</p>` },
+    detail: `<p>Sin la restricción del reloj no hay análisis de timing. En el CPU de ejemplo: ${a(P4 + 'constraints/nexys4ddr_top.xdc', 'nexys4ddr_top.xdc')}.</p>` },
   { id: 'git', group: 'Preparar', step: 'build-verif',
     title: 'Uso control de versiones desde el primer día',
-    detail: '<p>Un commit por módulo que pasa su prueba. Este repo además usa el commit como versión del hardware dentro del bitstream.</p>' },
+    detail: '<p>Un commit por módulo que pasa su prueba. El CPU de ejemplo además usa el commit como versión del hardware dentro del bitstream.</p>' },
 ];
 
 export const TEST_CATEGORIES = [
@@ -335,7 +335,7 @@ addi x2, x2, 2
 `,
         expect: { regs: {}, mem: {} },
         neverHalts: true,
-        note: '<p>No termina nunca. En esta implementación la memoria de instrucciones tiene 256 palabras y está llena de NOPs después del programa; el PC sigue avanzando, da la vuelta (la imem se indexa con <code>addr[9:2]</code>) y el programa vuelve a ejecutarse: después de N vueltas, <code>x1 = N</code>. Hay que pausarlo desde la debug unit con <code>P</code>.</p>',
+        note: '<p>No termina nunca. En el CPU de ejemplo la memoria de instrucciones tiene 256 palabras y está llena de NOPs después del programa; el PC sigue avanzando, da la vuelta (la imem se indexa con <code>addr[9:2]</code>) y el programa vuelve a ejecutarse: después de N vueltas, <code>x1 = N</code>. Hay que pausarlo desde la debug unit con <code>P</code>.</p>',
       },
     ],
   },

@@ -50,7 +50,7 @@ const fwdAlt = {
   options: [
     A('Sin forwarding (solo stalls)', 'Si hay dependencia RAW, se detiene el pipeline hasta que el productor escriba el regfile. Es el modo alternativo de la GUI.',
       ['Hardware mínimo, camino crítico corto', 'Fácil de verificar'], ['Hasta 2 burbujas por dependencia', 'CPI mucho mayor en código real'], 'bajo', 'CPI ~1,3-1,6 típico', 'Cores mínimos, MIPS I teórico'),
-    A('Red de bypass completa', 'Lo que hace este diseño, extendido: más fuentes de forwarding (desde la salida de la ALU en el mismo ciclo, desde otro pipe).',
+    A('Red de bypass completa', 'Lo que hace el CPU de ejemplo, extendido: más fuentes de forwarding (desde la salida de la ALU en el mismo ciclo, desde otro pipe).',
       ['CPI cercano a 1', 'Estándar en pipelines clásicos'], ['Muxes anchos en el camino crítico', 'Crece cuadráticamente con el ancho de emisión'], 'medio', 'Casi 0 burbujas excepto load-use', 'MIPS R3000, Rocket, Cortex-A'),
     A('Scoreboard', 'Una tabla registra qué registro está pendiente de escribir y qué unidad funcional lo produce. Las instrucciones esperan y se emiten fuera de orden cuando se libera el operando.',
       ['Permite ejecución fuera de orden', 'Oculta latencias largas'], ['No renombra: sufre WAR y WAW', 'Lógica compleja'], 'alto', 'Reduce stalls por multiplicador/divisor', 'CDC 6600, ARM Cortex-A8 (parcial)'),

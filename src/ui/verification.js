@@ -42,10 +42,10 @@ export function createVerification(root, cb = {}) {
     clear(box).append(
       h('div', { class: 'panel-head' }, h('div', { class: 'panel-title' }, h('span', { class: 'eyebrow' }, 'Verificación'), h('h2', {}, VERIF.title))),
       h('p', { class: 'lead small-lead' }, VERIF.lead),
-      h('div', { class: 'vf-cmd' }, h('code', {}, VERIF.command), ext(p4('verif/README.md'), 'verif/README.md ↗'), ext(p4('RESULTADOS.md'), 'RESULTADOS.md ↗')),
-      h('h3', { class: 'hero-h' }, 'Cuatro ideas'),
+      h('div', { class: 'vf-cmd' }, h('span', { class: 'muted small' }, 'En el CPU de ejemplo:'), h('code', {}, VERIF.command), ext(p4('verif/README.md'), 'verif/README.md ↗'), ext(p4('RESULTADOS.md'), 'RESULTADOS.md ↗')),
+      h('h3', { class: 'hero-h' }, 'Cuatro ideas para cualquier CPU'),
       h('div', { class: 'vp-grid' }, VERIF.principles.map((p) => h('div', { class: 'vp' }, h('b', {}, p.title), prose(p.html)))),
-      h('h3', { class: 'hero-h' }, 'Las capas, en el orden del flujo'),
+      h('h3', { class: 'hero-h' }, 'Las capas, en el orden del flujo (con el resultado del ejemplo)'),
       h('ol', { class: 'vs-flow' }, VERIF.stages.map((s, i) => h('li', { class: 'vs' },
         h('div', { class: 'vs-head' }, h('span', { class: 'vs-n' }, String(i + 1)), h('div', {}, h('b', {}, s.title), h('span', { class: 'vs-q' }, s.question))),
         h('div', { class: 'vs-layers' }, s.layers.map(layerCard))))),

@@ -125,7 +125,7 @@ export function createLessons(root, cb = {}) {
     }
     if (l.repo && l.repo.length) {
       article.append(h('section', { class: 'lesson-sec' },
-        h('h3', {}, 'En el repo'),
+        h('h3', {}, 'En el CPU de ejemplo'),
         h('ul', { class: 'repo-list' }, l.repo.map((r) => h('li', {}, h('a', { href: r.href, target: '_blank', rel: 'noopener' }, r.label + ' ↗'), r.note ? h('span', { class: 'muted' }, ' — ' + r.note) : null)))));
     }
     box.append(article,

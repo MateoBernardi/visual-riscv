@@ -1,5 +1,5 @@
 // isa.js - contenido didáctico del set de instrucciones RV32I tal como lo implementa
-// el RTL de este repo (control.v / immgen.v). Sin DOM, sin imports.
+// el RTL de el CPU de ejemplo (control.v / immgen.v). Sin DOM, sin imports.
 
 export const FIELD_COLORS = {
   opcode: '#1aa3a1',
@@ -29,7 +29,7 @@ const cSYS = () => C({ halt: 1 });
 const T = [
   // ---- R
   ['add', 'R', 'Suma', 'rd ← rs1 + rs2',
-    '<p>Suma dos registros y deja el resultado en <code>rd</code>. Codificación: opcode <code>0110011</code>, <code>funct3=000</code>, <code>funct7=0000000</code>. En esta implementación la ALU opera en <code>OP_ADD</code> y el desbordamiento se ignora: la aritmética es módulo 2<sup>32</sup> (la ALU calcula un flag de overflow, pero ninguna instrucción RV32I lo consulta).</p><p>Uso típico: <code>add x3, x1, x2</code> para sumar dos variables. Si el destino es <code>x0</code> el resultado se descarta, que es la forma de escribir un NOP "caro".</p>',
+    '<p>Suma dos registros y deja el resultado en <code>rd</code>. Codificación: opcode <code>0110011</code>, <code>funct3=000</code>, <code>funct7=0000000</code>. En el CPU de ejemplo la ALU opera en <code>OP_ADD</code> y el desbordamiento se ignora: la aritmética es módulo 2<sup>32</sup> (la ALU calcula un flag de overflow, pero ninguna instrucción RV32I lo consulta).</p><p>Uso típico: <code>add x3, x1, x2</code> para sumar dos variables. Si el destino es <code>x0</code> el resultado se descarta, que es la forma de escribir un NOP "caro".</p>',
     cR('OP_ADD'), ['addi', 'sub', 'mv']],
   ['sub', 'R', 'Resta', 'rd ← rs1 − rs2',
     '<p>Resta <code>rs2</code> a <code>rs1</code>. Comparte opcode y <code>funct3</code> con <code>add</code>; solo se distinguen por el bit 30 de la instrucción (<code>funct7[5]=1</code>). control.v lo decodifica con <code>{funct7[5],funct3} = 4\'b1000</code>.</p><p>No existe un "subi": para restar una constante se usa <code>addi</code> con un inmediato negativo. <code>neg rd, rs</code> es <code>sub rd, x0, rs</code>.</p>',
@@ -61,7 +61,7 @@ const T = [
 
   // ---- I (ALU)
   ['addi', 'I', 'Suma con inmediato', 'rd ← rs1 + sext(imm12)',
-    '<p>Suma un inmediato de 12 bits con signo (−2048..2047) a <code>rs1</code>. Es la instrucción más versátil del conjunto: <code>addi x1, x0, 5</code> es <code>li x1, 5</code>, <code>addi rd, rs, 0</code> es <code>mv</code> y <code>addi x0, x0, 0</code> (<code>0x00000013</code>) es el <code>nop</code>.</p><p>En esta implementación el NOP es además la "instrucción vacía" con la que se rellenan la imem y IF/ID cuando se descarta algo.</p>',
+    '<p>Suma un inmediato de 12 bits con signo (−2048..2047) a <code>rs1</code>. Es la instrucción más versátil del conjunto: <code>addi x1, x0, 5</code> es <code>li x1, 5</code>, <code>addi rd, rs, 0</code> es <code>mv</code> y <code>addi x0, x0, 0</code> (<code>0x00000013</code>) es el <code>nop</code>.</p><p>En el CPU de ejemplo el NOP es además la "instrucción vacía" con la que se rellenan la imem y IF/ID cuando se descarta algo.</p>',
     cI('OP_ADD'), ['li', 'mv', 'nop', 'add']],
   ['andi', 'I', 'AND con inmediato', 'rd ← rs1 & sext(imm12)',
     '<p>AND bit a bit con un inmediato extendido en signo. Atención: <code>andi x1, x2, -1</code> es un AND con 32 unos (copia <code>x2</code>), porque el inmediato se extiende en signo incluso en las operaciones lógicas. Típico: <code>andi x5, x5, 0xFF</code> para aislar un byte.</p>',
@@ -90,10 +90,10 @@ const T = [
 
   // ---- Loads
   ['lb', 'I', 'Load byte (con signo)', 'rd ← sext(mem8[rs1 + sext(imm)])',
-    '<p>Lee 1 byte de la dirección <code>rs1 + imm</code> y lo extiende en signo a 32 bits. En esta implementación dmem lee la palabra completa, elige el byte con <code>addr[1:0]</code> y lo rellena con <code>{{24{b[7]}}, b}</code>. El dato recién existe al final de MEM, por eso un consumidor inmediato provoca un load-use stall.</p>',
+    '<p>Lee 1 byte de la dirección <code>rs1 + imm</code> y lo extiende en signo a 32 bits. En el CPU de ejemplo dmem lee la palabra completa, elige el byte con <code>addr[1:0]</code> y lo rellena con <code>{{24{b[7]}}, b}</code>. El dato recién existe al final de MEM, por eso un consumidor inmediato provoca un load-use stall.</p>',
     cL(), ['lbu', 'sb', 'lw']],
   ['lh', 'I', 'Load halfword (con signo)', 'rd ← sext(mem16[rs1 + sext(imm)])',
-    '<p>Lee 2 bytes y extiende el signo del bit 15. La dirección debe ser par: <b>en esta implementación no hay trap por acceso desalineado</b>, simplemente usa <code>addr[1]</code> para elegir la mitad de la palabra, así que una dirección impar daría un resultado sin sentido (otros diseños la tratan como excepción o la parten en dos accesos).</p>',
+    '<p>Lee 2 bytes y extiende el signo del bit 15. La dirección debe ser par: un acceso desalineado se puede soportar (partiéndolo en dos) o tratar como excepción. En el CPU de ejemplo es un trap (causa 4): el CPU se detiene sin escribir <code>rd</code>.</p>',
     cL(), ['lhu', 'sh']],
   ['lw', 'I', 'Load word', 'rd ← mem32[rs1 + sext(imm)]',
     '<p>Lee una palabra de 32 bits (dirección múltiplo de 4). La ALU calcula la dirección en EX, dmem lee en MEM y el mux <code>wb_sel=01</code> pone el dato en el camino de escritura. Es la causa del único stall de datos "legítimo" del pipeline (load-use).</p>',
@@ -110,7 +110,7 @@ const T = [
     '<p>Escribe el byte bajo de <code>rs2</code>. En dmem se activa un solo byte-enable (<code>be = 4\'b0001 &lt;&lt; addr[1:0]</code>) y el dato se replica en los carriles para que llegue al correcto. No escribe ningún registro, y los otros tres bytes de la palabra quedan intactos.</p>',
     cS(), ['lb', 'lbu', 'sh']],
   ['sh', 'S', 'Store halfword', 'mem16[rs1 + sext(imm)] ← rs2[15:0]',
-    '<p>Escribe 2 bytes. <code>be</code> vale <code>0011</code> o <code>1100</code> según <code>addr[1]</code>. Requiere dirección par (en esta implementación no hay trap si no lo es).</p>',
+    '<p>Escribe 2 bytes. <code>be</code> vale <code>0011</code> o <code>1100</code> según <code>addr[1]</code>. Requiere dirección par; en el CPU de ejemplo, una impar es un trap (causa 6) y no escribe nada.</p>',
     cS(), ['lh', 'lhu', 'sb', 'sw']],
   ['sw', 'S', 'Store word', 'mem32[rs1 + sext(imm)] ← rs2',
     '<p>Escribe los 32 bits de <code>rs2</code> (<code>be = 1111</code>). El inmediato está partido en dos (<code>imm[11:5]</code> arriba y <code>imm[4:0]</code> en el lugar donde otros formatos tienen <code>rd</code>) para que <code>rs1</code> y <code>rs2</code> queden siempre en las mismas posiciones. Típico: guardar una variable en el stack.</p><p>Un detalle de pipeline: el dato <code>rs2</code> no pasa por la ALU, pero igual puede depender de la instrucción anterior; el forwarding lo cubre porque el mux de rs2 está antes del mux del inmediato.</p>',
@@ -118,7 +118,7 @@ const T = [
 
   // ---- Branches
   ['beq', 'B', 'Branch if equal', 'if (rs1 == rs2) PC ← PC + sext(imm)',
-    '<p>Salta si los registros son iguales. La ALU resta (<code>OP_SUB</code>) y la bandera <code>zero</code> alimenta a <code>branch_unit</code>. El destino es <code>PC + imm</code>, donde PC es la dirección del propio branch (no la de la siguiente instrucción).</p><p>En esta implementación se resuelve en EX: si salta, se descartan las 2 instrucciones que ya se habían buscado después del branch (penalidad de 2 ciclos); si no salta, no cuesta nada.</p>',
+    '<p>Salta si los registros son iguales. La ALU resta (<code>OP_SUB</code>) y la bandera <code>zero</code> alimenta a <code>branch_unit</code>. El destino es <code>PC + imm</code>, donde PC es la dirección del propio branch (no la de la siguiente instrucción).</p><p>En el CPU de ejemplo se resuelve en EX: si salta, se descartan las 2 instrucciones que ya se habían buscado después del branch (penalidad de 2 ciclos); si no salta, no cuesta nada.</p>',
     cB('OP_SUB'), ['bne', 'beqz']],
   ['bne', 'B', 'Branch if not equal', 'if (rs1 != rs2) PC ← PC + sext(imm)',
     '<p>Salta si son distintos (<code>~zero</code>). Típico para cerrar un loop: <code>bne x1, x2, loop</code>. Mismo costo que <code>beq</code>: 2 burbujas si se toma, ninguna si no.</p>',
@@ -130,7 +130,7 @@ const T = [
     '<p>Salta si <code>rs1 ≥ rs2</code> con signo (<code>~alu_lt</code>). RV32I no tiene "menor o igual" ni "mayor": se obtienen invirtiendo los operandos (<code>ble</code> y <code>bgt</code> son pseudoinstrucciones).</p>',
     cB('OP_SLT'), ['blt', 'ble']],
   ['bltu', 'B', 'Branch if less than (sin signo)', 'if (rs1 <u rs2) PC ← PC + sext(imm)',
-    '<p>Como <code>blt</code> pero sin signo (<code>alu_ltu</code>). Útil para comparar direcciones o índices. Detalle de esta implementación: control.v deja <code>alu_op=OP_SUB</code> para BLTU/BGEU, porque la decisión no sale del resultado de la ALU sino de la salida <code>o_ltu</code>, que existe siempre.</p>',
+    '<p>Como <code>blt</code> pero sin signo (<code>alu_ltu</code>). Útil para comparar direcciones o índices. Detalle del CPU de ejemplo: control.v deja <code>alu_op=OP_SUB</code> para BLTU/BGEU, porque la decisión no sale del resultado de la ALU sino de la salida <code>o_ltu</code>, que existe siempre.</p>',
     cB('OP_SUB'), ['bgeu', 'bgtu']],
   ['bgeu', 'B', 'Branch if greater or equal (sin signo)', 'if (rs1 >=u rs2) PC ← PC + sext(imm)',
     '<p>Como <code>bge</code> pero sin signo (<code>~alu_ltu</code>).</p>',
@@ -138,15 +138,15 @@ const T = [
 
   // ---- Jumps
   ['jal', 'J', 'Jump and link', 'rd ← PC + 4; PC ← PC + sext(imm21)',
-    '<p>Salto incondicional relativo al PC con alcance de ±1 MiB. Guarda la dirección de retorno <code>PC+4</code> en <code>rd</code> (en esta implementación viaja por <code>wb_sel=10</code>). <code>jal x0, off</code> es el <code>j</code> común (no guarda nada) y <code>jal ra, f</code> es una llamada a función.</p><p>Aunque su destino se conoce apenas se decodifica (no depende de ningún registro), <b>este core lo resuelve en EX</b> igual que un branch y descarta 2 instrucciones; otros diseños lo resuelven en ID y pierden solo 1.</p>',
+    '<p>Salto incondicional relativo al PC con alcance de ±1 MiB. Guarda la dirección de retorno <code>PC+4</code> en <code>rd</code> (en el CPU de ejemplo viaja por <code>wb_sel=10</code>). <code>jal x0, off</code> es el <code>j</code> común (no guarda nada) y <code>jal ra, f</code> es una llamada a función.</p><p>Aunque su destino se conoce apenas se decodifica (no depende de ningún registro), <b>el CPU de ejemplo lo resuelve en EX</b> igual que un branch y descarta 2 instrucciones; otros diseños lo resuelven en ID y pierden solo 1.</p>',
     C({ reg_write: 1, jump: 1, wb_sel: 2, imm_sel: 4, alu_op: 'OP_ADD' }), ['jalr', 'j', 'call']],
   ['jalr', 'I', 'Jump and link register', 'rd ← PC + 4; PC ← (rs1 + sext(imm)) & ~1',
-    '<p>Salto indirecto: el destino sale de un registro más un offset, con el bit 0 forzado a 0. En esta implementación la ALU suma <code>rs1 + imm</code> (<code>alu_src=1</code>) y <code>redirect_target = alu_out &amp; ~1</code>. <code>jalr x0, 0(ra)</code> es <code>ret</code>.</p><p>Es un hazard doble: de control (el destino no se sabe hasta EX) y de datos (necesita <code>rs1</code>, que puede venir por forwarding). Trampa de la ISA: si <code>rd == rs1</code>, el destino se calcula con el valor <b>viejo</b> de <code>rs1</code>; en el pipeline sale natural porque el destino se calcula en EX y <code>rd</code> se escribe recién en WB.</p>',
+    '<p>Salto indirecto: el destino sale de un registro más un offset, con el bit 0 forzado a 0. En el CPU de ejemplo la ALU suma <code>rs1 + imm</code> (<code>alu_src=1</code>) y <code>redirect_target = alu_out &amp; ~1</code>. <code>jalr x0, 0(ra)</code> es <code>ret</code>.</p><p>Es un hazard doble: de control (el destino no se sabe hasta EX) y de datos (necesita <code>rs1</code>, que puede venir por forwarding). Trampa de la ISA: si <code>rd == rs1</code>, el destino se calcula con el valor <b>viejo</b> de <code>rs1</code>; en el pipeline sale natural porque el destino se calcula en EX y <code>rd</code> se escribe recién en WB.</p>',
     C({ reg_write: 1, alu_src: 1, jump: 1, wb_sel: 2, imm_sel: 0, alu_op: 'OP_ADD', is_jalr: 1 }), ['jal', 'ret', 'jr']],
 
   // ---- U
   ['lui', 'U', 'Load upper immediate', 'rd ← imm20 << 12',
-    '<p>Carga los 20 bits altos de una constante y deja los 12 bajos en cero. En esta implementación <b>la ALU no interviene</b>: <code>wb_sel=11</code> hace que el mux de MEM entregue directamente el inmediato (<code>mem_imm</code>), así que no hace falta agregar una operación "pasa B" a la ALU. Combinado con <code>addi</code> arma cualquier constante de 32 bits.</p>',
+    '<p>Carga los 20 bits altos de una constante y deja los 12 bajos en cero. En el CPU de ejemplo <b>la ALU no interviene</b>: <code>wb_sel=11</code> hace que el mux de MEM entregue directamente el inmediato (<code>mem_imm</code>), así que no hace falta agregar una operación "pasa B" a la ALU. Combinado con <code>addi</code> arma cualquier constante de 32 bits.</p>',
     C({ reg_write: 1, wb_sel: 3, imm_sel: 3 }), ['auipc', 'li', 'addi']],
   ['auipc', 'U', 'Add upper immediate to PC', 'rd ← PC + (imm20 << 12)',
     '<p>Suma un inmediato de 20 bits desplazado al PC de <b>esta</b> instrucción. Con él se calculan direcciones relativas al PC (código independiente de la posición). En el RTL el mux del operando A de la ALU elige <code>ex_pc</code> en lugar de <code>rs1</code> cuando <code>is_auipc=1</code>.</p>',
@@ -154,13 +154,13 @@ const T = [
 
   // ---- System
   ['ecall', 'I', 'Llamada al entorno', 'halt ← 1',
-    '<p>En un sistema completo genera una excepción hacia el sistema operativo (escribe CSRs y salta al vector de trap). Esta implementación no tiene CSRs ni modo privilegiado: <b>cualquier</b> opcode SYSTEM (<code>1110011</code>) activa <code>halt</code>. El CPU deja de buscar instrucciones, retira todo lo anterior y levanta <code>o_halt</code> cuando la instrucción llega a WB.</p>',
+    '<p>En un sistema completo genera una excepción hacia el sistema operativo (escribe CSRs y salta al vector de trap). El CPU de ejemplo no tiene CSRs ni modo privilegiado: <code>ecall</code> y <code>ebreak</code> lo detienen, y las instrucciones de CSR son ilegales. El CPU deja de buscar instrucciones, retira todo lo anterior y levanta <code>o_halt</code> cuando la instrucción llega a WB.</p>',
     cSYS(), ['ebreak']],
   ['ebreak', 'I', 'Breakpoint', 'halt ← 1',
     '<p>Pensada en la ISA para que un depurador tome el control. Acá se comporta igual que <code>ecall</code> y es la forma estándar de terminar un programa: detiene el pipeline y la debug unit responde <code>H</code> por UART. Cada programa de ejemplo termina con <code>ebreak</code>; sin él, el PC seguiría recorriendo la imem llena de NOPs.</p>',
     cSYS(), ['ecall']],
-  ['fence', 'I', 'Fence (NOP en este core)', '(sin efecto)',
-    '<p>Ordena accesos a memoria en sistemas con varios agentes o cachés. Como este core es in-order, con una sola memoria de datos y sin caché, control.v cae en <code>default</code> (todas las señales en 0) y se ejecuta como un NOP.</p>',
+  ['fence', 'I', 'Fence (NOP en el CPU de ejemplo)', '(sin efecto)',
+    '<p>Ordena accesos a memoria en sistemas con varios agentes o cachés. Como el CPU de ejemplo es in-order, con una sola memoria de datos y sin caché, control.v cae en <code>default</code> (todas las señales en 0) y se ejecuta como un NOP.</p>',
     C({}), ['nop']],
 ];
 

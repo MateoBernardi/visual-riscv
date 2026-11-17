@@ -382,3 +382,7 @@ button.crumb:hover { background: var(--code-bg); color: var(--teal-d); }
 .back-pill[hidden] { display: none; }
 .app.in-module .back-pill { top: 124px; }
 @media (max-width: 960px) { .back-pill { top: 62px; left: 10px; } }
+
+/* Nota "En el CPU de ejemplo": el caso concreto, separado de la idea general */
+.prose .ej-note { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--orange) 10%, var(--panel2)); border-left: 3px solid var(--orange); font-size: 0.93em; }
+.prose .ej-note b { color: var(--text); }

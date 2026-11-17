@@ -1,4 +1,4 @@
-// verification.js - cómo se verificó el CPU de project_4 (verif/ del repo). Sin DOM.
+// verification.js - cómo verificar un CPU, por capas, con el CPU de ejemplo (project_4/verif) como caso. Sin DOM.
 //
 // VERIF = { intro, principles: [{title, html}], stages: [{ id, title, question, layers: [...] }], tools: [...], links }
 //   layer = { id, name, result, what, why, readme }        readme: ruta dentro de project_4/
@@ -10,14 +10,14 @@ const BLOB = `https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.ref}/pro
 export const p4 = (path) => (/\.\w+$/.test(path) ? BLOB : TREE) + path;
 
 export const VERIF = {
-  title: 'Cómo se verificó',
-  lead: 'Un solo comando (verif/run.sh) prueba el CPU en el orden del flujo de diseño: primero el RTL, después lo que hace Vivado con él y por último la placa real. Cada capa responde una pregunta distinta, y ninguna alcanza sola.',
+  title: 'Cómo verificar un CPU',
+  lead: 'Ninguna prueba alcanza sola: cada capa responde una pregunta distinta. Conviene correrlas en el orden del flujo de diseño, de lo más barato (el RTL) a lo más real (la placa). Al lado de cada capa está el resultado del CPU de ejemplo, que las corre todas con un solo comando.',
   command: 'verif/run.sh',
   principles: [
-    { title: 'Contra la especificación, no contra uno mismo', html: '<p>Si el mismo que escribió el CPU escribe los valores esperados, los dos pueden tener el mismo error. Por eso las pruebas principales comparan contra modelos <b>independientes</b>: la especificación formal de RV32I (riscv-formal) y Sail, el modelo oficial de la ISA (riscv-arch-test).</p>' },
+    { title: 'Contra la especificación, no contra uno mismo', html: '<p>Si el mismo que escribió el CPU escribe los valores esperados, los dos pueden tener el mismo error. Por eso las pruebas principales tienen que comparar contra modelos <b>independientes</b>: la especificación formal de RV32I (riscv-formal) y Sail, el modelo oficial de la ISA (riscv-arch-test).</p>' },
     { title: 'Para cualquier programa, no para los que elegí', html: '<p>Un testbench prueba los programas que a uno se le ocurrieron. La verificación formal deja que el solver elija <b>cualquier</b> secuencia de instrucciones, incluidas las ilegales y los saltos raros, y busca una que rompa el CPU.</p>' },
-    { title: 'Probar que la prueba sirve (mutantes)', html: '<p>Una propiedad que nunca falla puede estar vacía. Cada suite incluye copias del RTL con un error inyectado a propósito (sacar el stall, escribir en un trap…) y exige que <b>fallen</b>. Si un mutante pasa, la prueba no está mirando lo que dice mirar.</p>' },
-    { title: 'Un SKIP nunca es un PASS', html: '<p>Una capa da PASS solo si corrió al menos una prueba y todas dieron bien. Si falta una herramienta da SKIP, y el resultado global no es verde. Así no se confunde "no se probó" con "funciona".</p>' },
+    { title: 'Probar que la prueba sirve (mutantes)', html: '<p>Una propiedad que nunca falla puede estar vacía. Armá copias del RTL con un error inyectado a propósito (sacar el stall, escribir en un trap…) y exigí que <b>fallen</b>. Si un mutante pasa, la prueba no está mirando lo que dice mirar.</p>' },
+    { title: 'Un SKIP nunca es un PASS', html: '<p>Que una capa dé PASS solo si corrió al menos una prueba y todas dieron bien. Si falta una herramienta, SKIP, y el resultado global no es verde. Así no se confunde "no se probó" con "funciona".</p>' },
   ],
   stages: [
     {
@@ -25,23 +25,23 @@ export const VERIF = {
       layers: [
         { id: 'rvfi', name: 'riscv-formal', result: '45/45 + 7 mutantes',
           what: 'El CPU completo contra la ISA RV32I: cada instrucción retirada se compara con lo que dice la spec, incluidas las excepciones y que el CPU nunca se trabe.',
-          why: 'Es la única prueba que cubre <b>todos</b> los programas posibles (BMC desde el reset). Encontró que un salto a una dirección desalineada no generaba trap y que un load desalineado escribía rd: por eso existen los traps.',
+          why: 'Es la única prueba que cubre <b>todos</b> los programas posibles (BMC desde el reset). En el CPU de ejemplo encontró que un salto desalineado no generaba trap y que un load desalineado escribía rd.',
           readme: 'verif/formal/rvfi/README.md' },
         { id: 'act', name: 'riscv-arch-test', result: '39/39',
           what: 'La suite oficial de RISC-V International: un test por instrucción, autoverificado contra Sail.',
-          why: 'Es lo que se corre para decir "cumple RV32I" en la industria. Complementa a riscv-formal con programas largos y reales, en simulación (Verilator).',
+          why: 'Es lo que se usa para decir "cumple RV32I". Complementa al formal con programas largos y reales, en simulación.',
           readme: 'verif/sim/README.md' },
         { id: 'traps', name: 'traps', result: '19/19',
-          what: 'Tests propios: la causa y el PC que reporta cada excepción, y que una instrucción del camino equivocado no provoca trap.',
-          why: 'riscv-arch-test, sin CSRs, no puede probar las excepciones: la suite las lee de <code>mcause</code>, que este CPU no tiene. Este hueco lo cubre un test dirigido.',
+          what: 'Tests dirigidos: la causa y el PC de cada excepción, y que una instrucción del camino equivocado no provoque trap.',
+          why: 'La suite oficial lee la causa de una excepción en <code>mcause</code>. Si tu CPU no tiene CSRs, ese hueco lo tenés que cubrir con tests propios.',
           readme: 'verif/sim/README.md' },
         { id: 'formal', name: 'propiedades por módulo', result: '25/25',
-          what: 'Forwarding, hazard unit, control del pipeline y datapath, cada uno con sus <code>assert</code>, probados de forma exhaustiva o por inducción.',
-          why: 'Se superponen con riscv-formal a propósito: corren en segundos, señalan el módulo que falla y muestran cómo se escribe una propiedad formal. También cubren lo que riscv-formal no mira, como el contenido de la dmem.',
+          what: 'Cada unidad chica (forwarding, hazards, control del pipeline) con sus <code>assert</code>, probada de forma exhaustiva o por inducción.',
+          why: 'Se superponen con riscv-formal a propósito: corren en segundos y señalan el módulo que falla. También cubren lo que riscv-formal no mira, como el contenido de la memoria de datos.',
           readme: 'verif/README.md' },
         { id: 'rendimiento', name: 'rendimiento', result: '14/14',
-          what: 'Ciclos y CPI del diseño y de cada variante; una variante tiene que terminar con el mismo estado que el diseño base.',
-          why: 'Un testbench que mira solo el estado final no ve un ciclo de más. Esta capa sí, y fue la que permitió decidir entre "sacar el stall" y "adelantar el load desde WB".',
+          what: 'Ciclos y CPI del diseño y de cada variante que quieras evaluar; una variante tiene que terminar con el mismo estado que el diseño base.',
+          why: 'Un testbench que mira solo el estado final no ve un ciclo de más. Esta capa sí, y es la que te deja comparar ideas con números. En el CPU de ejemplo decidió el load-use (ver abajo).',
           readme: 'verif/sim/README.md' },
         { id: 'sistema', name: 'sistema', result: '67/67',
           what: 'UART + debug unit + CPU simulados juntos, manejados desde la línea serie como lo haría la PC.',
@@ -59,7 +59,7 @@ export const VERIF = {
       ],
     },
     {
-      id: 'implementacion', title: 'Implementación', question: '¿Funciona a 70 MHz en el peor caso?',
+      id: 'implementacion', title: 'Implementación', question: '¿Llega a tiempo a la frecuencia elegida, en el peor caso?',
       layers: [
         { id: 'implementacion', name: 'implementación', result: '22/22',
           what: 'STA completo: setup, hold y ancho de pulso con margen positivo, nada sin restringir, cruces de reloj seguros, todo ruteado y DRC limpio.',
@@ -75,7 +75,7 @@ export const VERIF = {
           why: 'Evita el error más común en el laboratorio: probar un bitstream viejo y creer que es el nuevo.',
           readme: 'verif/placa/README.md' },
         { id: 'placa', name: 'placa', result: '41/41',
-          what: 'Programas y traps corridos en la Nexys4 DDR por la UART y comparados con la simulación del RTL: ciclos, registros, dmem y causa del halt.',
+          what: 'Programas y traps corridos en la placa por la UART y comparados con la simulación del RTL: ciclos, registros, memoria y causa del halt.',
           why: 'Es la prueba final de que todo lo anterior se sostiene en el silicio. Como compara contra la simulación, también valida que los números de rendimiento simulados son los de la placa.',
           readme: 'verif/placa/README.md' },
       ],
@@ -97,14 +97,14 @@ export const VERIF = {
     { id: 'iverilog', name: 'Icarus Verilog', href: 'https://github.com/steveicarus/iverilog', role: 'Simulador de Verilog por eventos.',
       why: 'Simula el sistema completo con la UART, sin Vivado, para que la capa de sistema corra en cualquier máquina.', usedBy: ['sistema'] },
     { id: 'oss-cad', name: 'OSS CAD Suite', href: 'https://github.com/YosysHQ/oss-cad-suite-build', role: 'Distribución con Yosys, SymbiYosys, los solvers, Verilator e Icarus.',
-      why: 'Fija versiones: verif/tools/install.sh instala una fecha concreta de la suite, así una corrida de hoy y una de dentro de un año usan las mismas herramientas.', usedBy: ['formal', 'rvfi', 'act', 'sistema'] },
+      why: 'Fijá una versión (una fecha concreta de la suite): así una corrida de hoy y una de dentro de un año usan las mismas herramientas.', usedBy: ['formal', 'rvfi', 'act', 'sistema'] },
     { id: 'gcc', name: 'GCC RISC-V (xPack)', href: 'https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack', role: 'Compilador y ensamblador cruzado para RISC-V.',
       why: 'Compila los tests de riscv-arch-test y los programas de traps a ELF.', usedBy: ['act', 'traps'] },
     { id: 'vivado', name: 'AMD Vivado', href: 'https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/vivado.html', role: 'Síntesis, place & route, STA y bitstream para el Artix-7.',
-      why: 'Es la única herramienta que sabe implementar en esta FPGA. Solo hace falta para las capas de síntesis en adelante; todo el RTL se verifica con herramientas libres.', usedBy: ['sintesis', 'implementacion', 'bitstream'] },
+      why: 'Hace falta para implementar en FPGAs de AMD (como la Artix-7 del ejemplo), solo desde la síntesis en adelante: todo el RTL se puede verificar con herramientas libres.', usedBy: ['sintesis', 'implementacion', 'bitstream'] },
   ],
   decision: {
-    title: 'Un ejemplo de por qué sirve: la decisión del load-use',
+    title: 'Para qué sirve: la decisión del load-use en el CPU de ejemplo',
     html: `<p>En el diseño anterior el stall de load-use <b>sobraba</b>: el forwarding desde MEM ya entregaba el dato del load. El diseño pagaba un ciclo de stall y además tenía la lectura de la dmem en el camino crítico (50 MHz). Había dos arreglos coherentes y las capas de verificación permitieron compararlos con números:</p>
 <ul><li><b>A</b>: sacar el stall. Cumple la ISA, menos ciclos, pero la dmem sigue en el camino crítico: 60 MHz.</li>
 <li><b>B</b>: dejar el stall y adelantar el load solo desde WB. Mismos ciclos que antes, sin la dmem en el camino crítico: <b>70 MHz</b>.</li></ul>

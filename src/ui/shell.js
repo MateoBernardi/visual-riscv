@@ -4,7 +4,7 @@ const NAV_TIPS = {
   home: 'Presentación y por dónde empezar', lessons: 'Lecciones: ISA, pipeline, hazards, memoria, debug unit y UART',
   examples: 'Programas de ejemplo para cargar en el simulador', sim: 'Simulador ciclo a ciclo del pipeline sobre la placa 3D',
   debug: 'Consola de la debug unit: cargar, ejecutar y volcar por UART',
-  verificacion: 'Cómo se verificó el CPU: capas, herramientas y sus repositorios',
+  verificacion: 'Cómo verificar un CPU: capas, herramientas y sus repositorios',
 };
 export const VIEWS = [
   ['home', 'Inicio'],

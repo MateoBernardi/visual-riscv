@@ -27,7 +27,7 @@ export function createInspector(root, cb = {}) {
   root.append(box);
   let key = null;
   let live = { rows: [], fsm: null, graph: null, focusLive: null, timer: null };
-  const openState = new Map([['Por qué', true]]);
+  const openState = new Map([['Qué problema resuelve', true], ['Por qué así', true]]);
 
   function disposeLive() {
     if (live.timer) clearInterval(live.timer);
@@ -299,7 +299,7 @@ export function createInspector(root, cb = {}) {
     box.append(h('div', { class: 'panel-head' }, h('div', { class: 'panel-title' }, h('span', { class: 'eyebrow' }, 'Inspector · Vista general'), h('h2', {}, '¿Qué es esta vista?'))),
       h('div', { class: 'insp-body' },
         h('div', { class: 'prose', html: OVERVIEW.intro }),
-        h('p', { class: 'muted' }, 'Hacé clic en cualquier bloque de la escena 3D para ver qué hace, cómo está hecho en este RTL y qué entra y sale en este ciclo.'),
+        h('p', { class: 'muted' }, 'Hacé clic en cualquier bloque para ver qué problema resuelve, por qué se resuelve así y cómo está hecho en el CPU de ejemplo.'),
         ...OVERVIEW.sections.map((o) => {
           const ex = o.explain || {};
           const chips = h('div', { class: 'chips gh-chips' }, ext(githubUrl(o.file, `module:${o.module}`), `${o.file} · ${o.module} ${GH}`),
@@ -341,19 +341,19 @@ export function createInspector(root, cb = {}) {
     const ex = (view && view.explain) || null;
     if (!view && info && info.summary) body.append(h('div', { class: 'summary prose', html: info.summary }));
 
-    // primero el por qué; cómo está hecho y la teoría desde cero quedan plegados
-    if (ex && ex.whyThisChoice) body.append(section('Por qué', h('div', { class: 'prose', html: ex.whyThisChoice })));
+    // primero el problema y por qué se resuelve así (abiertos); el detalle del RTL del ejemplo queda plegado
+    if (ex && ex.firstPrinciples) body.append(section('Qué problema resuelve', h('div', { class: 'prose', html: ex.firstPrinciples })));
+    if (ex && ex.whyThisChoice) body.append(section('Por qué así', h('div', { class: 'prose', html: ex.whyThisChoice })));
     if (ex && ex.inThisProject) {
       const chips = h('div', { class: 'chips gh-chips' });
       if (view) {
         chips.append(ext(githubUrl(view.file, view.pseudo ? undefined : `module:${view.module}`), `${view.file}${view.pseudo ? '' : ' · ' + view.module} ${GH}`));
         for (const r of view.refs || []) chips.append(ext(githubUrl(view.file, r.sym), `${r.label} ${GH}`));
       }
-      body.append(section('Cómo está hecho', [h('div', { class: 'prose', html: ex.inThisProject }), chips]));
+      body.append(section('En el RTL del ejemplo', [h('div', { class: 'prose', html: ex.inThisProject }), chips]));
     } else if (view) {
-      body.append(section('Cómo está hecho', h('div', { class: 'chips gh-chips' }, ext(fileUrl(view.file), `${view.file} ${GH}`))));
+      body.append(section('En el RTL del ejemplo', h('div', { class: 'chips gh-chips' }, ext(fileUrl(view.file), `${view.file} ${GH}`))));
     }
-    if (ex && ex.firstPrinciples) body.append(section('Desde cero', h('div', { class: 'prose', html: ex.firstPrinciples })));
     if (alt && ((alt.options && alt.options.length) || alt.current)) {
       body.append(section('Otras opciones', buildAlt(alt), { count: (alt.options || []).length || null }));
     }
