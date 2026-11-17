@@ -12,7 +12,7 @@ export function createHome(root, cb = {}) {
     h('h1', {}, HOME.title),
     h('p', { class: 'lead' }, HOME.tagline),
     h('div', { class: 'hero-intro prose', html: HOME.intro }),
-    h('div', { class: 'facts' }, HOME.facts.map((f) => h('div', { class: 'fact' }, h('b', {}, f.k), h('span', {}, f.v)))),
+    h('div', { class: 'facts' }, HOME.facts.map((f) => h('div', { class: 'fact' }, h('b', {}, f.k), f.v ? h('span', {}, f.v) : null))),
     h('h3', { class: 'hero-h' }, 'Por dónde empezar'),
     h('div', { class: 'path-grid' }, HOME.paths.map((p, i) => h('button', { class: 'path-card p-' + p.id + (i === 0 ? ' main' : ''), type: 'button', onclick: () => cb.onPath && cb.onPath(p.id) },
       h('b', {}, p.title),

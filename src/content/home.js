@@ -7,7 +7,7 @@ export const HOME = {
   tagline: 'Por qué el RV32I de este repo está hecho como está, visto por dentro y ciclo a ciclo.',
   intro: '<p>Un procesador <b>RISC-V RV32I de 5 etapas</b> en Verilog, corriendo en una FPGA Nexys4 DDR, con una <b>debug unit por UART</b> para cargarlo y observarlo desde la PC. Cada bloque del tablero enlaza a su archivo en GitHub.</p>',
   facts: [
-    { k: '70 MHz', v: 'en el peor caso de timing' },
+    { k: '70 MHz', v: '' },
     { k: 'CPI 1,34–1,62', v: 'medido en la placa' },
     { k: '45/45', v: 'chequeos de riscv-formal' },
     { k: '39/39', v: 'tests oficiales de RV32I' },
@@ -19,5 +19,5 @@ export const HOME = {
     { id: 'construir', title: 'Construí tu propio RISC-V', text: 'Siete pasos, en el orden en que conviene darlos.', cta: 'Ver los pasos' },
     { id: 'debug', title: 'Debug por UART', text: 'El protocolo real de la debug unit, byte a byte.', cta: 'Abrir la consola' },
   ],
-  repo: { label: 'Ver project_4 en GitHub', href: `https://github.com/${REPO.owner}/${REPO.repo}/tree/main/project_4` },
+  repo: { label: 'Ver Repo en GitHub', href: `https://github.com/${REPO.owner}/${REPO.repo}` },
 };
