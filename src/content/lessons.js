@@ -5,7 +5,7 @@
 //   { id, title, level, track: 'entender'|'construir', minutes, intro,
 //     sections: [{ heading, html }], watch: [{ block, title, html }], exampleId, focus, repo: [{label, href, note}], next }
 // Bloques 3D: pc imem ifid control regfile immgen idex fwdMuxA fwdMuxB aluSrcMux alu branch exmem dmem wbMux memwb
-// hazard forward flush debug uart clkrst (ver CONTRACT.md).
+// hazard forward flush illegal trap debug uart clkrst (ver CONTRACT.md).
 import { githubUrl, REPO } from './repo.js';
 
 const P4 = `https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.ref}/project_4/`;
@@ -159,8 +159,8 @@ ${ej('resolución en EX. Los saltos son entre el 70 y el 98 % de los ciclos perd
 ${ej('la primera versión no tenía traps. riscv-formal encontró que un load desalineado escribía <code>rd</code> y que las codificaciones inválidas se ejecutaban: 8 de 44 chequeos fallaban. Con los traps, 45/45.')}` },
       { heading: 'Pausar sin tocar el reloj', html: `<p>Para pausar el CPU desde afuera usá un enable que llegue a cada registro, nunca una compuerta sobre el reloj. Cortar el reloj con lógica genera glitches y skew; el enable las FPGAs lo implementan gratis en cada flip-flop.</p>` },
     ],
-    watch: [{ block: 'control', title: 'Control', html: 'marca ebreak, ecall e ilegales en ID.' }, { block: 'branch', title: 'EX', html: 'trap_unit detecta saltos y accesos inválidos.' }],
-    exampleId: 'trap-desalineado', focus: 'branch',
+    watch: [{ block: 'illegal', title: 'Illegal', html: 'marca en ID las codificaciones que no son RV32I.' }, { block: 'trap', title: 'Trap', html: 'detecta en EX saltos y accesos desalineados o fuera de memoria.' }],
+    exampleId: 'trap-desalineado', focus: 'trap',
     repo: [R('pipeline/flow/trap_unit.v', 'module:trap_unit', 'trap_unit.v'), R('pipeline/2_decode/illegal_check.v', 'module:illegal_check', 'illegal_check.v'), X('rtl/pipeline/README.md', 'Las causas', 'códigos de mcause y dónde se detecta cada una')],
     next: 'debug-uart',
   },

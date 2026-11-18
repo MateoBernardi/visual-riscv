@@ -211,6 +211,29 @@ export const BLOCK_INFO = {
       S('id_rs2', 'Fuente 2 en ID.', 'signals.idRs2'),
     ],
   },
+  illegal: {
+    title: 'Chequeo de instrucción ilegal', stage: 'ID',
+    summary: '<p>Decide si la palabra en ID es una de las 40 codificaciones de RV32I. Si no lo es, la instrucción queda marcada (causa 2) y recién detiene el CPU al llegar a EX.</p>',
+    rtlFile: 'pipeline/2_decode/illegal_check.v',
+    signals: [
+      S('illegal', 'La instrucción en ID no es RV32I.', 'signals.idIllegal'),
+      S('id_fetch_fault', 'El PC de la instrucción está fuera de la imem (causa 1).', 'signals.idFetchFault'),
+      S('id_stop', 'La instrucción va a detener el CPU (ilegal, fuera de imem, ecall o ebreak).', 'signals.idStop'),
+      S('id_cause', 'Causa que viaja con la instrucción.', 'signals.idCause'),
+    ],
+  },
+  trap: {
+    title: 'Unidad de traps', stage: 'EX',
+    summary: '<p>Detecta en EX las excepciones que dependen de una dirección: salto a un destino no múltiplo de 4, load o store desalineado, o fuera de la dmem. Anula las escrituras de la instrucción y detiene el CPU.</p>',
+    rtlFile: 'pipeline/flow/trap_unit.v',
+    signals: [
+      S('exc', 'Hay una excepción en EX.', 'signals.exc'),
+      S('exc_mem', 'La excepción es de un load o store.', 'signals.excMem'),
+      S('cause', 'Código de mcause.', 'signals.excCause'),
+      S('tval', 'Dirección que falló.', 'signals.excTval'),
+      S('addr', 'Dirección del acceso (salida de la ALU).', 'signals.aluOut'),
+    ],
+  },
   forward: {
     title: 'Forwarding unit', stage: 'EX',
     summary: '<p>Compara <code>ex_rs1/ex_rs2</code> con <code>mem_rd</code> y <code>wb_rd</code> y genera <code>forward_a/b</code>. EX/MEM (<code>10</code>) tiene prioridad sobre MEM/WB (<code>01</code>). Ignora x0 y los destinos sin <code>reg_write</code>. Como el hazard unit, compara campos crudos de la instrucción.</p>',

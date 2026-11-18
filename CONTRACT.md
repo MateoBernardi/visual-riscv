@@ -9,10 +9,10 @@ Fuente de verdad del hardware: el RTL en
 ## IDs de bloque (los usan la escena, el inspector, los pop-ups y las alternativas)
 ```
 pc imem ifid control regfile immgen idex fwdMuxA fwdMuxB aluSrcMux alu branch
-exmem dmem wbMux memwb hazard forward flush debug uart
+exmem dmem wbMux memwb hazard forward flush illegal trap debug uart clkrst
 ```
 - `wbMux` es el mux wb_sel. Está en la etapa MEM, porque en el RTL `mem_result` se calcula en MEM y MEM/WB guarda `wb_result` ya seleccionado.
-- Etapas: `IF` (pc, imem), `ID` (ifid, control, regfile, immgen, hazard), `EX` (idex, fwdMuxA, fwdMuxB, aluSrcMux, alu, branch, forward, flush), `MEM` (exmem, dmem, wbMux), `WB` (memwb). Fuera del core: `debug` y `uart`.
+- Etapas: `IF` (pc, imem), `ID` (ifid, control, illegal, regfile, immgen, hazard), `EX` (idex, fwdMuxA, fwdMuxB, aluSrcMux, alu, branch, trap, forward, flush), `MEM` (exmem, dmem, wbMux), `WB` (memwb). Fuera del core: `debug` y `uart`.
 
 ## IDs de cable (los construye la escena; la integración los activa)
 ```
@@ -24,6 +24,7 @@ fwdMuxB-exmem  idex-forward   forward-fwdMuxA forward-fwdMuxB exmem-forward memw
 exmem-fwdMuxA  exmem-fwdMuxB  memwb-fwdMuxA  memwb-fwdMuxB  branch-flush   flush-ifid
 flush-idex     exmem-dmem     exmem-wbMux    dmem-wbMux     wbMux-memwb    memwb-regfile
 uart-debug     debug-uart     debug-imem     debug-pc
+ifid-illegal   illegal-idex   idex-trap      alu-trap       trap-exmem     clkrst-debug
 ```
 Convención: `a-b` es un cable que va de a hacia b, y los paquetes viajan en ese sentido.
 
@@ -262,6 +263,8 @@ Se resuelven contra el objeto de contexto `ctx = { snap, dbg, uart }`:
 | `wbMux` | `wb_mux` |
 | `memwb` | `mem_wb_reg` |
 | `hazard` | `hazard_unit` |
+| `illegal` | `illegal_check` |
+| `trap` | `trap_unit` |
 | `forward` | `forward_unit` |
 | `flush` | `flush_unit` (los detalles de `stop_fetch` y `redirect` van en la vista `flow_ctrl`, hija de `flush_unit`) |
 | `debug` | `debug_unit` |

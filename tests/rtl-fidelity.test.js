@@ -7,7 +7,7 @@ import { RTL_INDEX, fileEntry, moduleInfo, resolveSymbol, hasSymbol } from '../s
 import { buildIndex, DEFAULT_RTL_ROOT } from '../scripts/rtl-index.mjs';
 
 const BLOCK_IDS = ['pc', 'imem', 'ifid', 'control', 'regfile', 'immgen', 'idex', 'fwdMuxA', 'fwdMuxB', 'aluSrcMux', 'alu', 'branch',
-  'exmem', 'dmem', 'wbMux', 'memwb', 'hazard', 'forward', 'flush', 'debug', 'uart', 'clkrst'];
+  'exmem', 'dmem', 'wbMux', 'memwb', 'hazard', 'forward', 'flush', 'illegal', 'trap', 'debug', 'uart', 'clkrst'];
 const TOP_FILES = { top_riscv: 'top/top_riscv.v', riscv_pipeline: 'pipeline/riscv_pipeline.v' };
 const views = Object.values(VIEWS);
 

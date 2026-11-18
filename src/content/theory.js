@@ -315,7 +315,7 @@ export const EVENT_THEORY = {
   },
   trap: {
     title: 'Trap en EX',
-    block: 'branch',
+    block: 'trap',
     what(ev) {
       const d = (ev && ev.data) || {};
       const NAMES = { 0: 'salto a una dirección no alineada', 4: 'load desalineado', 5: 'load fuera de la dmem', 6: 'store desalineado', 7: 'store fuera de la dmem' };

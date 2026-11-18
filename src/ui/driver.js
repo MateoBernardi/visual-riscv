@@ -40,6 +40,8 @@ export function applySnapshot(scene, snap, prevSnap, opts = {}) {
     on('ifid-regfile', cID, `x${sg.idRs1 ?? '?'}, x${sg.idRs2 ?? '?'}`);
     on('ifid-immgen', cID, hx(L.ifid?.inst ?? S.ID.inst));
     on('ifid-hazard', cID, 'rs1/rs2');
+    on('ifid-illegal', sg.idIllegal ? COLORS.red : cID, 'instr');
+    if (sg.idStop && !stall) on('illegal-idex', sg.idIllegal || sg.idFetchFault ? COLORS.red : cID, sg.idIllegal ? 'ilegal' : sg.idFetchFault ? 'fuera de imem' : 'halt');
     if (!stall) {
       on('control-idex', cID, 'ctrl');
       on('regfile-idex', cID, hx(sg.idRdata1), true);
@@ -60,6 +62,8 @@ export function applySnapshot(scene, snap, prevSnap, opts = {}) {
     on('aluSrcMux-alu', cEX, hx(sg.aluB), true);
     on('alu-exmem', cEX, hx(sg.aluOut), true);
     if (idex.mem_write) on('fwdMuxB-exmem', sg.fwdB ? COLORS.teal : cEX, hx(sg.fwdBVal));
+    if (idex.mem_read || idex.mem_write || sg.redirect) { on('idex-trap', sg.exc ? COLORS.red : cEX, 'mem/redirect'); on('alu-trap', sg.exc ? COLORS.red : cEX, hx(sg.exc ? sg.excTval : sg.aluOut)); }
+    if (sg.exc) on('trap-exmem', COLORS.red, 'causa ' + sg.excCause);
     if (idex.branch || idex.jump) { on('idex-branch', cEX, 'branch'); on('alu-branch', cEX, sg.zero ? 'zero=1' : 'zero=0'); }
     if (sg.fwdA || sg.fwdB) on('idex-forward', COLORS.teal, `rs1=x${idex.rs1} rs2=x${idex.rs2}`);
     for (const [side, sel, val] of [['A', sg.fwdA, sg.fwdAVal], ['B', sg.fwdB, sg.fwdBVal]]) {
@@ -102,6 +106,8 @@ export function applySnapshot(scene, snap, prevSnap, opts = {}) {
   if (sg.fwdA || sg.fwdB) { scene.highlightBlock('forward', COLORS.teal); if (sg.fwdA) scene.highlightBlock('fwdMuxA', COLORS.teal); if (sg.fwdB) scene.highlightBlock('fwdMuxB', COLORS.teal); }
   if (bypass) scene.highlightBlock('regfile', COLORS.teal);
   if (redirect) { scene.highlightBlock('flush', COLORS.grey); scene.highlightBlock('branch', COLORS.orange); }
+  if (sg.exc) scene.highlightBlock('trap', COLORS.red);
+  if (vID && (sg.idIllegal || sg.idFetchFault)) scene.highlightBlock('illegal', COLORS.red);
 
   // valores en vivo bajo cada bloque
   const bv = (id, t) => scene.setBlockValue(id, t);
@@ -150,7 +156,7 @@ const mnemonic = (asm) => String(asm || '').trim().split(/\s+/)[0];
  * Chips de estado bajo cada bloque: solo cuando hay algo que decir en este ciclo (nada de "ok"/"–").
  * Los bloques que maneja la vista Debug (uart, debug, imem) no se tocan.
  */
-export const STATUS_IDS = ['pc', 'control', 'regfile', 'hazard', 'forward', 'flush', 'alu', 'branch', 'dmem'];
+export const STATUS_IDS = ['pc', 'control', 'illegal', 'regfile', 'hazard', 'forward', 'flush', 'alu', 'branch', 'trap', 'dmem'];
 export function computeStatuses(snap) {
   const out = {};
   const S = snap.stages || {}, sg = snap.signals || {}, L = snap.latches || {};
@@ -184,6 +190,9 @@ export function computeStatuses(snap) {
     out.alu = { text: name || ALU_OPS[sg.aluOp] || mnemonic(S.EX.asm), tone: 'info' };
     if (idex.branch || idex.jump) out.branch = { text: sg.redirect ? 'tomado → ' + short(sg.redirectTarget) : 'no tomado', tone: sg.redirect ? 'warn' : 'info' };
   }
+  if (vID && sg.idIllegal) out.illegal = { text: 'ilegal (causa 2)', tone: 'danger' };
+  else if (vID && sg.idFetchFault) out.illegal = { text: 'fuera de imem (causa 1)', tone: 'danger' };
+  if (vEX && sg.exc) out.trap = { text: 'causa ' + sg.excCause, tone: 'danger' };
   if (sg.memRead) out.dmem = { text: 'lee [' + short(sg.memAddr) + ']', tone: 'info' };
   else if (sg.memWrite) out.dmem = { text: 'escribe [' + short(sg.memAddr) + ']', tone: 'info' };
   return out;

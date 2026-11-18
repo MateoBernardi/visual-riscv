@@ -338,7 +338,8 @@ export class Pipeline {
       memRData: g.memRData, memBe: g.memBe, memResult: g.memResult, wbSel: g.wbSel,
       regWrite: g.regWrite, wbRd: g.wbRd, wbData: g.wbData,
       // extras (no están en el contrato)
-      exc: !!g.exExc, idStop: g.idStop,
+      exc: !!g.exExc, excMem: !!g.exExcMem, excCause: g.exExcCause, excTval: g.exExcTval,
+      idStop: g.idStop, idIllegal: !!g.idIllegal, idFetchFault: !!g.idFetchFault, idCause: g.idCause,
       stopFetch: g.stopFetch, overflow: !!g.ovf, branchTarget: g.branchTarget, ifInst: g.ifInst,
     };
     const snap = {
@@ -427,7 +428,7 @@ function buildEvents(snap, s, g, fwdOn) {
     }
     if (g.idStop) {
       const name = TRAP_CAUSE[g.idCause];
-      push('haltDetected', 'control', 'ID', g.idCause === 3 || g.idCause === 11
+      push('haltDetected', g.idCause === 2 ? 'illegal' : g.idCause === 1 ? 'imem' : 'control', 'ID', g.idCause === 3 || g.idCause === 11
         ? `Se detecta ${name.toUpperCase()}: cuando llegue a EX, el CPU se va a detener.`
         : `Se detecta un trap (${name}): viaja con la instrucción y actúa en EX, por si estaba en el camino equivocado.`, { id: st.ID.id, cause: g.idCause });
     }
@@ -474,7 +475,7 @@ function buildEvents(snap, s, g, fwdOn) {
     push('bubble', 'idex', 'EX', 'Burbuja en EX: no hay instrucción real en esta etapa.', { cause: s.idex.cause });
   }
   if (g.exExc) {
-    push('trap', 'branch', 'EX', `Trap: ${TRAP_CAUSE[g.exExcCause]} (causa ${g.exExcCause}). La instrucción no escribe nada y el CPU se detiene.`,
+    push('trap', 'trap', 'EX', `Trap: ${TRAP_CAUSE[g.exExcCause]} (causa ${g.exExcCause}). La instrucción no escribe nada y el CPU se detiene.`,
       { cause: g.exExcCause, tval: g.exExcTval });
   }
   if (g.redirect && !g.exExc) {
